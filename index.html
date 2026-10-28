@@ -44,6 +44,7 @@ h2::after{content:"";flex:1;height:1px;background:var(--line)}
 .btn.gold{background:linear-gradient(180deg,var(--gold2),var(--gold));color:#111a38}
 .btn.ghost{border:1.5px solid var(--gold);color:var(--gold2);background:transparent}
 .btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.soon{display:flex;align-items:center;justify-content:center;min-height:48px;padding:10px 14px;border-radius:12px;border:1.5px dashed var(--line);color:var(--gold2);font-weight:700;font-size:.95rem;text-align:center}
 .note{font-size:.8rem;color:var(--mute);margin-top:8px}
 .links{display:grid;gap:10px}
 .links .btn{justify-content:flex-start;gap:12px;background:var(--card);border:1px solid var(--line);color:var(--text);padding-left:18px}
@@ -119,6 +120,20 @@ footer{text-align:center;color:var(--mute);font-size:.8rem;margin-top:34px}
     <div class="btns">
       <a class="btn gold" href="https://www.amazon.com/dp/B0HNF1RVQ4" rel="noopener">Get it on Amazon</a>
       <a class="btn ghost" href="https://youtu.be/VhpT7OQuayk" rel="noopener">Watch the documentary</a>
+    </div>
+  </div>
+</article>
+
+<!-- TODO-play-link: replace the .soon label below with a real Google Play Books button when NEGERI YANG TERGADAI goes live (see TODO-play-link.md) -->
+<article class="book" lang="id">
+  <img src="img/negeri-yang-tergadai.jpg" alt="Sampul NEGERI YANG TERGADAI" width="104" height="156" loading="lazy">
+  <div class="info">
+    <h3>NEGERI YANG TERGADAI</h3>
+    <p class="sub">Siapa Sebenarnya Pemilik Indonesia? Tanah, Agunan, dan Kekuasaan dari 1870 hingga Kini. Pada 1870, satu kalimat dalam peraturan kolonial Belanda mengubah tanah Indonesia menjadi agunan. Buku ini menelusuri kalimat itu hingga hari ini.</p>
+    <p class="price">Ebook Bahasa Indonesia · Rp 49.000 di Indonesia / $2.99 di negara lain</p>
+    <div class="btns">
+      <p class="soon" id="play-books-soon">Segera hadir di Google Play Books</p>
+      <a class="btn ghost" href="https://youtu.be/VhpT7OQuayk" rel="noopener">Tonton dokumenternya</a>
     </div>
   </div>
 </article>
