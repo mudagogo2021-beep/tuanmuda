@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img">
+  <title>How a Cybercab branch turns a vehicle</title>
+  <desc>Proposal diagram of arrival, charging, cleaning, inspection, ready for dispatch, and the office. Illustrative, not an engineering plan.</desc>
+  
+    <rect width="1920" height="1080" fill="#f4f0e6"/>
+    <rect width="1920" height="10" fill="#141816"/>
+    <rect y="1036" width="1920" height="44" fill="#141816"/>
+    <text x="64" y="56" fill="#14382c" font-family="Inter" font-size="16" font-weight="600" text-anchor="start">PROPOSAL  ·  MUDASIR KHAN</text>
+    <text x="64" y="120" fill="#141816" font-family="Liberation Serif" font-size="52" font-weight="700" text-anchor="start">How a branch turns a vehicle</text>
+    <text x="64" y="168" fill="#3a433d" font-family="Inter" font-size="24" font-weight="400" text-anchor="start">Arrival, charging, cleaning, inspection, then ready for the next booked trip. The</text><text x="64" y="200" fill="#3a433d" font-family="Inter" font-size="24" font-weight="400" text-anchor="start">office runs the yard.</text>
+    <text x="64" y="1064" fill="#f4f0e6" font-family="Inter" font-size="20" font-weight="400" text-anchor="start">Illustrative, not an engineering plan.</text>
+  
+  
+        <path d="M406 490 H428" stroke="#141816" stroke-width="2"/>
+        <rect x="64" y="280" width="344" height="460" rx="12" fill="#f4f0e6" stroke="#141816" stroke-width="1.6"/>
+        <text x="88" y="344" fill="#14382c" font-family="Liberation Serif" font-size="32" font-weight="700" text-anchor="start">1</text>
+        <text x="88" y="398" fill="#141816" font-family="Liberation Serif" font-size="30" font-weight="700" text-anchor="start">Arrival</text>
+        <text x="88" y="448" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">A Cybercab returns from a</text><text x="88" y="474" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">booked trip and comes into</text><text x="88" y="500" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">the lot.</text>
+        <g>
+    <rect x="88" y="640" width="74" height="34" rx="17" fill="#14382c" stroke="#141816" stroke-width="1.6"/>
+    <rect x="98" y="647" width="28" height="12" rx="6" fill="#dff56a"/>
+  </g>
+      
+        <path d="M768 490 H790" stroke="#141816" stroke-width="2"/>
+        <rect x="426" y="280" width="344" height="460" rx="12" fill="#f4f0e6" stroke="#141816" stroke-width="1.6"/>
+        <text x="450" y="344" fill="#14382c" font-family="Liberation Serif" font-size="32" font-weight="700" text-anchor="start">2</text>
+        <text x="450" y="398" fill="#141816" font-family="Liberation Serif" font-size="30" font-weight="700" text-anchor="start">Charging</text>
+        <text x="450" y="448" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">It takes a stall. The crew</text><text x="450" y="474" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">logs the stall and the</text><text x="450" y="500" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">charge.</text>
+        <g>
+    <rect x="450" y="640" width="74" height="34" rx="17" fill="#f4f0e6" stroke="#141816" stroke-width="1.6"/>
+    <rect x="460" y="647" width="28" height="12" rx="6" fill="#141816"/>
+  </g>
+      
+        <path d="M1130 490 H1152" stroke="#141816" stroke-width="2"/>
+        <rect x="788" y="280" width="344" height="460" rx="12" fill="#f4f0e6" stroke="#141816" stroke-width="1.6"/>
+        <text x="812" y="344" fill="#14382c" font-family="Liberation Serif" font-size="32" font-weight="700" text-anchor="start">3</text>
+        <text x="812" y="398" fill="#141816" font-family="Liberation Serif" font-size="30" font-weight="700" text-anchor="start">Cleaning</text>
+        <text x="812" y="448" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Exterior wash and a cabin</text><text x="812" y="474" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">clean. Sensors and the</text><text x="812" y="500" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">cabin camera stay clear.</text>
+        <g>
+    <rect x="812" y="640" width="74" height="34" rx="17" fill="#f4f0e6" stroke="#141816" stroke-width="1.6"/>
+    <rect x="822" y="647" width="28" height="12" rx="6" fill="#141816"/>
+  </g>
+      
+        <path d="M1492 490 H1514" stroke="#141816" stroke-width="2"/>
+        <rect x="1150" y="280" width="344" height="460" rx="12" fill="#f4f0e6" stroke="#141816" stroke-width="1.6"/>
+        <text x="1174" y="344" fill="#14382c" font-family="Liberation Serif" font-size="32" font-weight="700" text-anchor="start">4</text>
+        <text x="1174" y="398" fill="#141816" font-family="Liberation Serif" font-size="30" font-weight="700" text-anchor="start">Inspection</text>
+        <text x="1174" y="448" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Photos, a look for damage</text><text x="1174" y="474" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">or leaks, and a clear</text><text x="1174" y="500" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">cabin camera.</text>
+        <g>
+    <rect x="1174" y="640" width="74" height="34" rx="17" fill="#f4f0e6" stroke="#141816" stroke-width="1.6"/>
+    <rect x="1184" y="647" width="28" height="12" rx="6" fill="#141816"/>
+  </g>
+      
+        
+        <rect x="1512" y="280" width="344" height="460" rx="12" fill="#f4f0e6" stroke="#141816" stroke-width="1.6"/>
+        <text x="1536" y="344" fill="#14382c" font-family="Liberation Serif" font-size="32" font-weight="700" text-anchor="start">5</text>
+        <text x="1536" y="398" fill="#141816" font-family="Liberation Serif" font-size="30" font-weight="700" text-anchor="start">Ready</text>
+        <text x="1536" y="448" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Staged toward the exit for</text><text x="1536" y="474" fill="#3a433d" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">the next dispatch.</text>
+        <g>
+    <rect x="1536" y="640" width="74" height="34" rx="17" fill="#14382c" stroke="#141816" stroke-width="1.6"/>
+    <rect x="1546" y="647" width="28" height="12" rx="6" fill="#dff56a"/>
+  </g>
+      
+  <rect x="64" y="770" width="1792" height="220" rx="12" fill="#141816"/>
+  <text x="96" y="830" fill="#dff56a" font-family="Inter" font-size="18" font-weight="700" text-anchor="start">OFFICE</text>
+  <text x="96" y="888" fill="#f4f0e6" font-family="Liberation Serif" font-size="36" font-weight="700" text-anchor="start">Beside the flow</text>
+  <text x="96" y="936" fill="#f4f0e6" font-family="Inter" font-size="20" font-weight="400" text-anchor="start">The shift lead, the day’s counts, keys, and first aid. The office</text><text x="96" y="964" fill="#f4f0e6" font-family="Inter" font-size="20" font-weight="400" text-anchor="start">keeps the yard moving. It is not a stop the vehicle drives through.</text>
+</svg>

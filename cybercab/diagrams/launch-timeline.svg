@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img">
+  <title>Conditional seven-week opening of the first branch</title>
+  <desc>Proposal timeline from naming a first market through opening one branch and beginning to fill it toward 200 vehicles.</desc>
+  
+    <rect width="1920" height="1080" fill="#f4f0e6"/>
+    <rect width="1920" height="10" fill="#141816"/>
+    <rect y="1036" width="1920" height="44" fill="#141816"/>
+    <text x="64" y="56" fill="#14382c" font-family="Inter" font-size="16" font-weight="600" text-anchor="start">PROPOSAL  ·  MUDASIR KHAN</text>
+    <text x="64" y="120" fill="#141816" font-family="Liberation Serif" font-size="52" font-weight="700" text-anchor="start">Seven weeks to open the first branch</text>
+    <text x="64" y="168" fill="#3a433d" font-family="Inter" font-size="24" font-weight="400" text-anchor="start">The clock starts when supply, insurance, permission, premises, and financing are in</text><text x="64" y="200" fill="#3a433d" font-family="Inter" font-size="24" font-weight="400" text-anchor="start">hand. Week 7 begins one branch, not a national network.</text>
+    <text x="64" y="1064" fill="#f4f0e6" font-family="Inter" font-size="20" font-weight="400" text-anchor="start">Illustrative, not an engineering plan.</text>
+  
+  <rect x="48" y="268" width="1135.5" height="24" rx="6" fill="#e7e1d2"/>
+  <text x="64" y="286" fill="#3a433d" font-family="Inter" font-size="13" font-weight="700" text-anchor="start">WEEKS 0–4 MOVE IF A STEP SLIPS</text>
+  <rect x="1195.5" y="268" width="676.5" height="24" rx="6" fill="#dff56a"/>
+  <text x="1207.5" y="286" fill="#141816" font-family="Inter" font-size="13" font-weight="700" text-anchor="start">WEEKS 5–7 WAIT ON SUPPLY</text>
+  
+        <rect x="48" y="300" width="217.5" height="500" rx="12" fill="#f4f0e6" stroke="#141816" stroke-width="1.5"/>
+        <text x="64" y="364" fill="#14382c" font-family="Liberation Serif" font-size="52" font-weight="700" text-anchor="start">0</text>
+        <text x="64" y="408" fill="#14382c" font-family="Inter" font-size="13" font-weight="700" text-anchor="start">FOUNDER</text>
+        <text x="64" y="456" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Name the first</text><text x="64" y="482" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">market:</text><text x="64" y="508" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Hartford-area CT</text><text x="64" y="534" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">suburbs, or</text><text x="64" y="560" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">suburban New</text><text x="64" y="586" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Jersey.</text>
+        <text x="64" y="700" fill="#14382c" font-family="Inter" font-size="12" font-weight="700" text-anchor="start">WAITS IF</text>
+        <text x="64" y="728" fill="#3a433d" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">No market named</text>
+      
+        <rect x="277.5" y="300" width="217.5" height="500" rx="12" fill="#f4f0e6" stroke="#141816" stroke-width="1.5"/>
+        <text x="293.5" y="364" fill="#14382c" font-family="Liberation Serif" font-size="52" font-weight="700" text-anchor="start">1</text>
+        <text x="293.5" y="408" fill="#14382c" font-family="Inter" font-size="13" font-weight="700" text-anchor="start">FOUNDER</text>
+        <text x="293.5" y="456" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Premises letter of</text><text x="293.5" y="482" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">intent.</text><text x="293.5" y="508" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Ready-to-use</text><text x="293.5" y="534" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">preferred.</text>
+        <text x="293.5" y="700" fill="#14382c" font-family="Inter" font-size="12" font-weight="700" text-anchor="start">WAITS IF</text>
+        <text x="293.5" y="728" fill="#3a433d" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">No letter of</text><text x="293.5" y="750" fill="#3a433d" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">intent</text>
+      
+        <rect x="507" y="300" width="217.5" height="500" rx="12" fill="#f4f0e6" stroke="#141816" stroke-width="1.5"/>
+        <text x="523" y="364" fill="#14382c" font-family="Liberation Serif" font-size="52" font-weight="700" text-anchor="start">2</text>
+        <text x="523" y="408" fill="#14382c" font-family="Inter" font-size="13" font-weight="700" text-anchor="start">FOUNDER + OPS</text>
+        <text x="523" y="456" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Hiring live. Work</text><text x="523" y="482" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">standards in hand.</text>
+        <text x="523" y="700" fill="#14382c" font-family="Inter" font-size="12" font-weight="700" text-anchor="start">WAITS IF</text>
+        <text x="523" y="728" fill="#3a433d" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">No labor plan</text>
+      
+        <rect x="736.5" y="300" width="217.5" height="500" rx="12" fill="#f4f0e6" stroke="#141816" stroke-width="1.5"/>
+        <text x="752.5" y="364" fill="#14382c" font-family="Liberation Serif" font-size="52" font-weight="700" text-anchor="start">3</text>
+        <text x="752.5" y="408" fill="#14382c" font-family="Inter" font-size="13" font-weight="700" text-anchor="start">OPS</text>
+        <text x="752.5" y="456" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Cameras, charge</text><text x="752.5" y="482" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">plan, wash</text><text x="752.5" y="508" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">dry-run.</text>
+        <text x="752.5" y="700" fill="#14382c" font-family="Inter" font-size="12" font-weight="700" text-anchor="start">WAITS IF</text>
+        <text x="752.5" y="728" fill="#3a433d" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">Unsafe, or no</text><text x="752.5" y="750" fill="#3a433d" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">power</text>
+      
+        <rect x="966" y="300" width="217.5" height="500" rx="12" fill="#f4f0e6" stroke="#141816" stroke-width="1.5"/>
+        <text x="982" y="364" fill="#14382c" font-family="Liberation Serif" font-size="52" font-weight="700" text-anchor="start">4</text>
+        <text x="982" y="408" fill="#14382c" font-family="Inter" font-size="13" font-weight="700" text-anchor="start">FOUNDER</text>
+        <text x="982" y="456" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Offers. Open and</text><text x="982" y="482" fill="#141816" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">close drills.</text>
+        <text x="982" y="700" fill="#14382c" font-family="Inter" font-size="12" font-weight="700" text-anchor="start">WAITS IF</text>
+        <text x="982" y="728" fill="#3a433d" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">Day cannot be</text><text x="982" y="750" fill="#3a433d" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">staffed</text>
+      
+        <rect x="1195.5" y="300" width="217.5" height="500" rx="12" fill="#141816" stroke="#141816" stroke-width="1.5"/>
+        <text x="1211.5" y="364" fill="#dff56a" font-family="Liberation Serif" font-size="52" font-weight="700" text-anchor="start">5</text>
+        <text x="1211.5" y="408" fill="#dff56a" font-family="Inter" font-size="13" font-weight="700" text-anchor="start">FOUNDER</text>
+        <text x="1211.5" y="456" fill="#f4f0e6" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Written path to</text><text x="1211.5" y="482" fill="#f4f0e6" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Cybercab supply.</text>
+        <text x="1211.5" y="700" fill="#dff56a" font-family="Inter" font-size="12" font-weight="700" text-anchor="start">WAITS IF</text>
+        <text x="1211.5" y="728" fill="#f4f0e6" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">No written</text><text x="1211.5" y="750" fill="#f4f0e6" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">supply path</text>
+      
+        <rect x="1425" y="300" width="217.5" height="500" rx="12" fill="#141816" stroke="#141816" stroke-width="1.5"/>
+        <text x="1441" y="364" fill="#dff56a" font-family="Liberation Serif" font-size="52" font-weight="700" text-anchor="start">6</text>
+        <text x="1441" y="408" fill="#dff56a" font-family="Inter" font-size="13" font-weight="700" text-anchor="start">OPS</text>
+        <text x="1441" y="456" fill="#f4f0e6" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Empty-lot pass</text><text x="1441" y="482" fill="#f4f0e6" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">with a full crew.</text>
+        <text x="1441" y="700" fill="#dff56a" font-family="Inter" font-size="12" font-weight="700" text-anchor="start">WAITS IF</text>
+        <text x="1441" y="728" fill="#f4f0e6" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">Standard fails</text>
+      
+        <rect x="1654.5" y="300" width="217.5" height="500" rx="12" fill="#141816" stroke="#141816" stroke-width="1.5"/>
+        <text x="1670.5" y="364" fill="#dff56a" font-family="Liberation Serif" font-size="52" font-weight="700" text-anchor="start">7</text>
+        <text x="1670.5" y="408" fill="#dff56a" font-family="Inter" font-size="13" font-weight="700" text-anchor="start">FOUNDER</text>
+        <text x="1670.5" y="456" fill="#f4f0e6" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Open the branch.</text><text x="1670.5" y="482" fill="#f4f0e6" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">Begin the fill</text><text x="1670.5" y="508" fill="#f4f0e6" font-family="Inter" font-size="18" font-weight="400" text-anchor="start">toward 200.</text>
+        <text x="1670.5" y="700" fill="#dff56a" font-family="Inter" font-size="12" font-weight="700" text-anchor="start">WAITS IF</text>
+        <text x="1670.5" y="728" fill="#f4f0e6" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">A condition</text><text x="1670.5" y="750" fill="#f4f0e6" font-family="Inter" font-size="16" font-weight="400" text-anchor="start">still open</text>
+      
+  <text x="64" y="860" fill="#141816" font-family="Inter" font-size="22" font-weight="400" text-anchor="start">Weeks 5, 6, and 7 wait without a written supply path, insurance, or local permission. The</text><text x="64" y="892" fill="#141816" font-family="Inter" font-size="22" font-weight="400" text-anchor="start">200-vehicle rule stays in place either way.</text>
+</svg>

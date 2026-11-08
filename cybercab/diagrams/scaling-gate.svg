@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img">
+  <title>The 200-vehicle gate between branches</title>
+  <desc>Proposal diagram. Another branch opens when 200 vehicles are on site and every gate flag is yes. Cities come last. Not a forecast.</desc>
+  
+    <rect width="1920" height="1080" fill="#f4f0e6"/>
+    <rect width="1920" height="10" fill="#141816"/>
+    <rect y="1036" width="1920" height="44" fill="#141816"/>
+    <text x="64" y="56" fill="#14382c" font-family="Inter" font-size="16" font-weight="600" text-anchor="start">PROPOSAL  ·  MUDASIR KHAN</text>
+    <text x="64" y="120" fill="#141816" font-family="Liberation Serif" font-size="52" font-weight="700" text-anchor="start">200 vehicles, then the next branch</text>
+    <text x="64" y="168" fill="#3a433d" font-family="Inter" font-size="24" font-weight="400" text-anchor="start">One branch fills before another opens. The number is a gate in the proposal, not a</text><text x="64" y="200" fill="#3a433d" font-family="Inter" font-size="24" font-weight="400" text-anchor="start">forecast and not a fleet that exists.</text>
+    <text x="64" y="1064" fill="#f4f0e6" font-family="Inter" font-size="20" font-weight="400" text-anchor="start">Illustrative, not an engineering plan.</text>
+  
+  <text x="64" y="390" fill="#14382c" font-family="Liberation Serif" font-size="180" font-weight="700" text-anchor="start">200</text>
+  <text x="64" y="440" fill="#141816" font-family="Inter" font-size="20" font-weight="700" text-anchor="start">ON SITE, THEN THE NEXT BRANCH</text>
+  <text x="64" y="490" fill="#3a433d" font-family="Inter" font-size="22" font-weight="400" text-anchor="start">A lot designed for 200 stalls is not the same</text><text x="64" y="522" fill="#3a433d" font-family="Inter" font-size="22" font-weight="400" text-anchor="start">as 200 vehicles on site, and neither number is</text><text x="64" y="554" fill="#3a433d" font-family="Inter" font-size="22" font-weight="400" text-anchor="start">how many can turn in a day.</text>
+  <text x="64" y="660" fill="#14382c" font-family="Inter" font-size="14" font-weight="700" text-anchor="start">WHILE THE BRANCH IS OPEN</text>
+  <text x="64" y="696" fill="#141816" font-family="Inter" font-size="20" font-weight="400" text-anchor="start">Weekly intake is the minimum of wash turns,</text><text x="64" y="724" fill="#141816" font-family="Inter" font-size="20" font-weight="400" text-anchor="start">charge sessions, and vehicles actually supplied.</text><text x="64" y="752" fill="#141816" font-family="Inter" font-size="20" font-weight="400" text-anchor="start">It rises after five good days, and it stops if</text><text x="64" y="780" fill="#141816" font-family="Inter" font-size="20" font-weight="400" text-anchor="start">wash or charge runs more than a day behind.</text>
+  <text x="64" y="860" fill="#14382c" font-family="Inter" font-size="14" font-weight="700" text-anchor="start">THE ORDER</text>
+  <rect x="64" y="884" width="200" height="48" rx="24" fill="#14382c"/>
+  <text x="164" y="915" fill="#f4f0e6" font-family="Inter" font-size="18" font-weight="700" text-anchor="middle">This branch</text>
+  <text x="286" y="916" fill="#141816" font-family="Inter" font-size="24" font-weight="400" text-anchor="start">→</text>
+  <rect x="314" y="884" width="200" height="48" rx="24" fill="#f4f0e6" stroke="#141816" stroke-width="1.6"/>
+  <text x="414" y="915" fill="#141816" font-family="Inter" font-size="18" font-weight="700" text-anchor="middle">Next branch</text>
+  <text x="536" y="916" fill="#141816" font-family="Inter" font-size="24" font-weight="400" text-anchor="start">→</text>
+  <rect x="564" y="884" width="180" height="48" rx="24" fill="#f4f0e6" stroke="#141816" stroke-dasharray="6 4"/>
+  <text x="654" y="915" fill="#141816" font-family="Inter" font-size="18" font-weight="700" text-anchor="middle">City last</text>
+  <rect x="1040" y="250" width="816" height="150" rx="12" fill="#141816"/>
+  <text x="1064" y="300" fill="#dff56a" font-family="Inter" font-size="16" font-weight="700" text-anchor="start">OPEN THE NEXT BRANCH</text>
+  <text x="1064" y="360" fill="#f4f0e6" font-family="Liberation Serif" font-size="36" font-weight="700" text-anchor="start">Only if every line is yes</text>
+  
+        <rect x="1040" y="430" width="816" height="66" rx="8" fill="#f4f0e6" stroke="#141816" stroke-width="1.4"/>
+        <rect x="1060" y="446" width="34" height="34" rx="6" fill="#e7e1d2" stroke="#141816"/>
+        <text x="1077" y="470" fill="#14382c" font-family="Inter" font-size="16" font-weight="700" text-anchor="middle">—</text>
+        <text x="1112" y="470" fill="#141816" font-family="Inter" font-size="22" font-weight="400" text-anchor="start">At least 200 vehicles on site</text>
+      
+        <rect x="1040" y="508" width="816" height="66" rx="8" fill="#f4f0e6" stroke="#141816" stroke-width="1.4"/>
+        <rect x="1060" y="524" width="34" height="34" rx="6" fill="#e7e1d2" stroke="#141816"/>
+        <text x="1077" y="548" fill="#14382c" font-family="Inter" font-size="16" font-weight="700" text-anchor="middle">—</text>
+        <text x="1112" y="548" fill="#141816" font-family="Inter" font-size="22" font-weight="400" text-anchor="start">Scorecard green for 4 weeks</text>
+      
+        <rect x="1040" y="586" width="816" height="66" rx="8" fill="#f4f0e6" stroke="#141816" stroke-width="1.4"/>
+        <rect x="1060" y="602" width="34" height="34" rx="6" fill="#e7e1d2" stroke="#141816"/>
+        <text x="1077" y="626" fill="#14382c" font-family="Inter" font-size="16" font-weight="700" text-anchor="middle">—</text>
+        <text x="1112" y="626" fill="#141816" font-family="Inter" font-size="22" font-weight="400" text-anchor="start">Insurance current</text>
+      
+        <rect x="1040" y="664" width="816" height="66" rx="8" fill="#f4f0e6" stroke="#141816" stroke-width="1.4"/>
+        <rect x="1060" y="680" width="34" height="34" rx="6" fill="#e7e1d2" stroke="#141816"/>
+        <text x="1077" y="704" fill="#14382c" font-family="Inter" font-size="16" font-weight="700" text-anchor="middle">—</text>
+        <text x="1112" y="704" fill="#141816" font-family="Inter" font-size="22" font-weight="400" text-anchor="start">No open critical incident</text>
+      
+        <rect x="1040" y="742" width="816" height="66" rx="8" fill="#f4f0e6" stroke="#141816" stroke-width="1.4"/>
+        <rect x="1060" y="758" width="34" height="34" rx="6" fill="#e7e1d2" stroke="#141816"/>
+        <text x="1077" y="782" fill="#14382c" font-family="Inter" font-size="16" font-weight="700" text-anchor="middle">—</text>
+        <text x="1112" y="782" fill="#141816" font-family="Inter" font-size="22" font-weight="400" text-anchor="start">Cities still come last</text>
+      
+  <text x="1040" y="860" fill="#3a433d" font-family="Inter" font-size="20" font-weight="400" text-anchor="start">The branch is considered for a successor after at least four</text><text x="1040" y="890" fill="#3a433d" font-family="Inter" font-size="20" font-weight="400" text-anchor="start">weeks of operation. One no keeps the next branch closed.</text>
+</svg>

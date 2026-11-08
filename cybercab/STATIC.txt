@@ -1,0 +1,9 @@
+Cybercab branches — static site on the portfolio Pages subpath /tuanmuda/cybercab/.
+Independent proposal by Mudasir Khan. Not a Tesla site.
+
+Open /tuanmuda/cybercab/ for the proposal.
+The walkthrough is /tuanmuda/cybercab/media/cybercab-branch-walkthrough.mp4
+with captions at /tuanmuda/cybercab/media/cybercab-branch-walkthrough.vtt.
+
+Asset and in-app links in this copy are prefixed for that subdirectory.
+Do not treat a localhost address as the public URL.
