@@ -1578,5 +1578,53 @@
     "image": "",
     "date": "",
     "description": "Five discipline-themed designs. Coming soon."
+  },
+  {
+    "title": "How did Melaka vote in 2026 vs 2021?",
+    "category": "maps",
+    "url": "https://mudagogo2021-beep.github.io/atlas-test/#ds=melaka_election&field=coalition",
+    "image": "",
+    "date": "2026-11-15",
+    "description": "Interactive atlas: all 28 Melaka DUN seats in 2021 and 2026. BN held 21 both years; three seats changed hands. Year slider."
+  },
+  {
+    "title": "Where have meteorites fallen to Earth?",
+    "category": "maps",
+    "url": "https://mudagogo2021-beep.github.io/atlas-test/#ds=meteorite_landings&field=fall",
+    "image": "",
+    "date": "2026-11-15",
+    "description": "Interactive atlas: 31,963 NASA catalogue landings, sized by mass and coloured Fell or Found. Antarctica's dense finds are a collection bias."
+  },
+  {
+    "title": "Where are the world's shipwrecks?",
+    "category": "maps",
+    "url": "https://mudagogo2021-beep.github.io/atlas-test/#ds=shipwrecks&field=source",
+    "image": "",
+    "date": "2026-11-15",
+    "description": "Interactive atlas: 10,267 NOAA ENC wrecks in US charted waters and 7,073 EMODnet heritage wrecks in parts of Europe. Not a world census."
+  },
+  {
+    "title": "How many people live in each part of Jerusalem?",
+    "category": "maps",
+    "url": "https://mudagogo2021-beep.github.io/atlas-test/#ds=jerusalem_population&field=pop_2024",
+    "image": "",
+    "date": "2026-11-15",
+    "description": "Interactive atlas: 57 CBS sub-quarters by end-2024 population, with 2022 Census main religion. East Jerusalem's status is disputed; religion shares are n/a."
+  },
+  {
+    "title": "Where are New Haven's pizza shops?",
+    "category": "maps",
+    "url": "https://mudagogo2021-beep.github.io/atlas-test/#ds=new_haven_pizza&field=pizza_style",
+    "image": "",
+    "date": "2026-11-15",
+    "description": "Interactive atlas: 38 OpenStreetMap pizza shops inside the city limit, coloured by style. Opening year only when a source exists (ODbL)."
+  },
+  {
+    "title": "Which US states have the most estimated active passports?",
+    "category": "maps",
+    "url": "https://mudagogo2021-beep.github.io/atlas-test/#ds=us_passports&field=est_active_passports",
+    "image": "",
+    "date": "2026-11-15",
+    "description": "Interactive atlas: estimated active passports by state, as the sum of State Department issuances FY2016–FY2025. Not a count of valid passports."
   }
 ]
