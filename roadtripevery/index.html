@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Road Trip Every · Map Maker</title>
+<meta name="description" content="How long would it take to road-trip to every…? Pick a chain or paste your own list, get an estimated route, and download a free poster. A Tuan Muda / @youngsirmuda project. Tips via Ko-fi.">
+<link rel="canonical" href="https://mudagogo2021-beep.github.io/tuanmuda/roadtripevery/">
+<meta property="og:title" content="Road Trip Every · Map Maker">
+<meta property="og:description" content="How long would it take to road-trip to every…? Make a free custom map in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mudagogo2021-beep.github.io/tuanmuda/roadtripevery/">
+<meta property="og:image" content="https://mudagogo2021-beep.github.io/tuanmuda/roadtripevery/assets/logo-192.png">
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="https://mudagogo2021-beep.github.io/tuanmuda/" target="_blank" rel="noopener">
+    <img src="assets/logo.svg" alt="" width="48" height="48">
+    <span><b>ROAD TRIP EVERY</b><small>Map Maker · by Tuan Muda @youngsirmuda</small></span>
+  </a>
+  <nav class="links">
+    <a href="https://www.youtube.com/@RoadTripEvery" target="_blank" rel="noopener">YouTube</a>
+    <a href="https://www.tiktok.com/@roadtripevery" target="_blank" rel="noopener">TikTok</a>
+    <a href="https://mudagogo2021-beep.github.io/tuanmuda/" target="_blank" rel="noopener">Tuan Muda</a>
+    <a href="https://ko-fi.com/youngsirmuda" target="_blank" rel="noopener">Tip on Ko-fi</a>
+  </nav>
+</header>
+
+<main class="layout">
+  <section class="panel" aria-label="Controls">
+    <h1>How long to road-trip to every…?</h1>
+
+    <div class="tabs" role="tablist">
+      <button role="tab" class="tab active" data-tab="preset" aria-selected="true">Pick a chain</button>
+      <button role="tab" class="tab" data-tab="custom" aria-selected="false">Your own list</button>
+    </div>
+
+    <div class="tabpane" id="pane-preset">
+      <label class="lbl" for="preset">Dataset</label>
+      <select id="preset"></select>
+      <div class="lbl-row"><span class="lbl">States / regions</span>
+        <span><button class="mini" id="st-all">All</button><button class="mini" id="st-none">None</button></span></div>
+      <div id="states" class="chips"></div>
+      <p class="src" id="src"></p>
+    </div>
+
+    <div class="tabpane hidden" id="pane-custom">
+      <label class="lbl" for="csv">Paste CSV (max <span class="maxrows"></span> rows)</label>
+      <textarea id="csv" rows="7" spellcheck="false" placeholder="name,lat,lng
+Times Square,40.758,-73.9855
+Lincoln Memorial,38.8893,-77.0502
+…or a column called address (geocoded, max 25)"></textarea>
+      <div class="row">
+        <label class="filebtn">Upload .csv<input type="file" id="file" accept=".csv,text/csv,text/plain"></label>
+        <button class="ghost" id="sample">Load example</button>
+      </div>
+      <label class="check"><input type="checkbox" id="geocode-ok"> Look up rows that only have an address (OpenStreetMap Nominatim, 1 per second, max 25)</label>
+      <label class="lbl" for="ctitle">Map title</label>
+      <input id="ctitle" type="text" maxlength="60" placeholder="My road trip">
+      <p class="hint">Your list stays in your browser; only address lookups are sent to Nominatim.</p>
+    </div>
+
+    <details class="assump" open>
+      <summary>Assumptions (editable)</summary>
+      <div class="grid2">
+        <label>Units<select id="units"><option value="imperial">miles / mpg / $</option><option value="metric">km / L per 100 km</option></select></label>
+        <label>Road factor ×<input id="factor" type="number" step="0.01" min="1" max="3"></label>
+        <label><span id="speed-lbl">Avg speed (mph)</span><input id="speed" type="number" step="0.1" min="5" max="120"></label>
+        <label>Minutes per stop<input id="stopmin" type="number" step="1" min="0" max="240"></label>
+        <label><span id="eff-lbl">Fuel economy (mpg)</span><input id="eff" type="number" step="0.1" min="1" max="200"></label>
+        <label><span id="price-lbl">Fuel price ($/gal)</span><input id="price" type="number" step="0.001" min="0" max="50"></label>
+      </div>
+      <p class="hint" id="assump-note"></p>
+    </details>
+
+    <button class="cta" id="go">Build my road trip</button>
+    <div class="progress hidden" id="prog"><div class="bar"><i></i></div><span></span></div>
+    <p class="err hidden" id="err" role="alert"></p>
+  </section>
+
+  <section class="mapwrap">
+    <div id="map" aria-label="Route map"></div>
+    <canvas id="fallback" class="hidden" aria-label="Route map (static)"></canvas>
+    <div class="maptools">
+      <button id="animate" disabled>▶ Animate route</button>
+      <button id="fit" disabled>Fit</button>
+    </div>
+  </section>
+
+  <section class="panel stats" aria-label="Results">
+    <h2 id="res-title">Your trip</h2>
+    <div class="cards">
+      <div class="card"><b id="s-stops">–</b><span>stops</span></div>
+      <div class="card"><b id="s-dist">–</b><span id="s-dist-l">est. road miles</span></div>
+      <div class="card"><b id="s-days">–</b><span>non-stop</span></div>
+      <div class="card"><b id="s-gas">–</b><span>est. fuel</span></div>
+    </div>
+    <p class="est" id="s-note">Distances are straight-line × road factor: an <b>estimate</b>, not a routed drive.</p>
+    <p class="est" id="s-hops"></p>
+    <p class="est" id="s-video"></p>
+    <p class="est" id="s-solver"></p>
+
+    <button class="cta" id="export" disabled>Download free poster (PNG)</button>
+    <p class="hint">Free posters carry the Road Trip Every watermark.</p>
+    <a class="kofi" href="https://ko-fi.com/youngsirmuda" target="_blank" rel="noopener">
+      <img src="assets/kofi-button.png" width="217" height="55" alt="Buy me a coffee on Ko-fi">
+    </a>
+    <p class="hint">This map maker is free. If you like it, you can leave a tip on Ko-fi. Nothing on this page takes a payment.</p>
+    <div class="paid">
+      <button disabled title="Coming soon">Get HD poster · no watermark</button>
+      <button disabled title="Coming soon">Animated video map</button>
+      <button disabled title="Coming soon">Printed poster (made to order)</button>
+      <button disabled title="Coming soon">Custom map order</button>
+      <span class="soon">Coming soon · not available yet</span>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <p>Not affiliated with, endorsed by or sponsored by any restaurant chain named here. Chain names are used only to describe store locations; no logos.</p>
+  <p>Store locations: <a href="https://www.alltheplaces.xyz/" target="_blank" rel="noopener">All the Places</a> (CC0). Map tiles: <a href="https://openfreemap.org/" target="_blank" rel="noopener">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>. Poster boundaries: Natural Earth (public domain). Address lookup: Nominatim / OpenStreetMap (ODbL).</p>
+  <p>Road Trip Every · a Tuan Muda (<a href="https://mudagogo2021-beep.github.io/tuanmuda/" target="_blank" rel="noopener">@youngsirmuda</a>) channel · <a href="https://www.youtube.com/@RoadTripEvery" target="_blank" rel="noopener">YouTube @RoadTripEvery</a> · <a href="https://www.tiktok.com/@roadtripevery" target="_blank" rel="noopener">TikTok @roadtripevery</a> · <a href="https://ko-fi.com/youngsirmuda" target="_blank" rel="noopener">Tip on Ko-fi</a></p>
+</footer>
+<script src="vendor/maplibre-gl/maplibre-gl.js"></script>
+<script src="js/csv.js"></script>
+<script src="js/poster.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

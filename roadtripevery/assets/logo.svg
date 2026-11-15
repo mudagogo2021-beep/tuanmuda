@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-soft" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-road" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- road glow + core, drawn first so the pin sits on top -->
+  <path d="M 36,680 C 140,700 200,620 300,650 C 360,670 370,710 400,708 C 445,706 470,650 580,640 C 680,630 730,560 770,500" fill="none" stroke="#FFB020" stroke-width="28" stroke-linecap="round" opacity="0.35" filter="url(#glow-soft)"/>
+  <path d="M 36,680 C 140,700 200,620 300,650 C 360,670 370,710 400,708 C 445,706 470,650 580,640 C 680,630 730,560 770,500" fill="none" stroke="#FFB020" stroke-width="16" stroke-linecap="round" filter="url(#glow-road)"/>
+  <path d="M 36,680 C 140,700 200,620 300,650 C 360,670 370,710 400,708 C 445,706 470,650 580,640 C 680,630 730,560 770,500" fill="none" stroke="#FFE8AA" stroke-width="6" stroke-linecap="round"/>
+  <!-- start / end dots on the road -->
+  <circle cx="42" cy="682" r="16" fill="#5EEAD4" filter="url(#glow)"/>
+  <circle cx="42" cy="682" r="7" fill="#F0FFFC"/>
+  <circle cx="766" cy="504" r="16" fill="#FFB020" filter="url(#glow)"/>
+  <circle cx="766" cy="504" r="7" fill="#FFE8AA"/>
+  <!-- pin (drawn on top of the road) -->
+  <path d="M 400,640 C 378,550 232,420 232,330 A 168,168 0 1 1 568,330 C 568,420 422,550 400,640 Z" fill="#FFB020" filter="url(#glow-soft)"/>
+  <path d="M 400,640 C 378,550 232,420 232,330 A 168,168 0 1 1 568,330 C 568,420 422,550 400,640 Z" fill="#FFB020" stroke="#FFE8AA" stroke-width="8"/>
+  <circle cx="400" cy="330" r="62" fill="#0B0E14"/>
+  <circle cx="400" cy="330" r="62" fill="none" stroke="#FFE8AA" stroke-width="8"/>
+</svg>

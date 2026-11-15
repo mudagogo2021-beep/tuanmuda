@@ -1674,5 +1674,13 @@
     "image": "img/roadtrip-mcd-malaysia.jpg",
     "date": "2026-11-15",
     "description": "A route through all 388 McDonald's in Malaysia: 6,430 km, 3 ferries, 1 flight, 7 days 13 hours non-stop."
+  },
+  {
+    "title": "Road Trip Every · Map Maker",
+    "category": "maps",
+    "url": "https://mudagogo2021-beep.github.io/tuanmuda/roadtripevery/",
+    "image": "img/roadtripevery-map-maker.jpg",
+    "date": "2026-11-15",
+    "description": "Free in-browser tool: pick a chain or paste your own list, get an estimated road-trip route, and download a watermarked poster. Tips via Ko-fi."
   }
 ]

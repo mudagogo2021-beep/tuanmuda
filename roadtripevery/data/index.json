@@ -1,0 +1,37 @@
+[
+ {
+  "id": "tacobell-usa",
+  "title": "Taco Bell \u00b7 USA",
+  "region": "US",
+  "count": 8288,
+  "file": "data/tacobell-usa.json"
+ },
+ {
+  "id": "mcd-usa",
+  "title": "McDonald's \u00b7 USA",
+  "region": "US",
+  "count": 13486,
+  "file": "data/mcd-usa.json"
+ },
+ {
+  "id": "dunkin-newengland",
+  "title": "Dunkin' \u00b7 New England",
+  "region": "US",
+  "count": 2086,
+  "file": "data/dunkin-newengland.json"
+ },
+ {
+  "id": "kfc-malaysia",
+  "title": "KFC \u00b7 Malaysia",
+  "region": "MY",
+  "count": 747,
+  "file": "data/kfc-malaysia.json"
+ },
+ {
+  "id": "mcd-malaysia",
+  "title": "McDonald's \u00b7 Malaysia",
+  "region": "MY",
+  "count": 382,
+  "file": "data/mcd-malaysia.json"
+ }
+]

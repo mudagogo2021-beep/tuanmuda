@@ -1,0 +1,1 @@
+Barlow Condensed (Jeremy Tribby) and Inter (Rasmus Andersson) are licensed under the SIL Open Font License, Version 1.1 — https://openfontlicense.org/ . Files copied from the Google Fonts collection on this machine.
