@@ -1682,5 +1682,22 @@
     "image": "img/roadtripevery-map-maker.jpg",
     "date": "2026-11-15",
     "description": "Free in-browser tool: pick a chain or paste your own list, get an estimated road-trip route, and download a watermarked poster. Tips via Ko-fi."
+  },
+  {
+    "title": "How Fast Can You Visit Every ZUS Coffee in Malaysia?",
+    "category": "shorts",
+    "url": "https://youtube.com/shorts/NBBV_jsCMvs",
+    "image": "img/zus-malaysia-short.jpg",
+    "date": "2026-11-15",
+    "description": "Road trip to all 599 ZUS Coffee outlets listed in Malaysia, Langkawi to Tawau: 7,553 km on real roads, 9 days 22 hours non-stop."
+  },
+  {
+    "title": "How Much to Drive Through Every Toll in Malaysia?",
+    "category": "shorts",
+    "url": "https://youtube.com/shorts/Nl9SeOV45Mg",
+    "image": "img/every-toll-malaysia-short.jpg",
+    "date": "2026-11-16",
+    "description": "Every expressway toll plaza in Malaysia in one drive: RM363.48 total (RM195.73 est. where no rate is published) and which company collects each ringgit.",
+    "short": true
   }
 ]
