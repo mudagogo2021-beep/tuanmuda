@@ -194,6 +194,29 @@
     return { ver, count, bakeW, bakeH, lon0, lon1, lat0, lat1, x, y, cid, rank };
   }
 
+  function decorateDots() {
+    const n = dots.count;
+    const lon = new Float32Array(n);
+    const lat = new Float32Array(n);
+    const sx = (dots.lon1 - dots.lon0) / dots.bakeW;
+    const sy = (dots.lat1 - dots.lat0) / dots.bakeH;
+    for (let i = 0; i < n; i++) {
+      lon[i] = dots.lon0 + (dots.x[i] + 0.5) * sx;
+      lat[i] = dots.lat1 - (dots.y[i] + 0.5) * sy;
+    }
+    const start = new Int32Array(64);
+    const count = new Int32Array(64);
+    start.fill(-1);
+    for (let i = 0; i < n; i++) {
+      const c = dots.cid[i];
+      if (c >= 64) continue;
+      if (start[c] < 0) start[c] = i;
+      count[c]++;
+    }
+    dots.lon = lon; dots.lat = lat;
+    dots.cidStart = start; dots.cidCount = count;
+  }
+
   function camAt(t) {
     const path = T.path;
     const tEnd = T.tEnd0;
@@ -727,8 +750,7 @@
       sy = uCY - ((s * Y) / rMax) * uR;
       vec2 clip = vec2((sx / uRes.x) * 2.0 - 1.0, 1.0 - (sy / uRes.y) * 2.0);
       gl_Position = vec4(clip, 0.0, 1.0);
-      float grow = clamp((32.0 / max(uView, 12.0)), 0.7, 1.35);
-      gl_PointSize = max(1.6, uSize * grow);
+      gl_PointSize = max(1.7, uSize);
       vAlpha = pp * pp * (3.0 - 2.0 * pp);
     }
   `;
@@ -739,9 +761,10 @@
       vec2 p = gl_PointCoord * 2.0 - 1.0;
       float r2 = dot(p, p);
       if (r2 > 1.0) discard;
-      float core = exp(-r2 * 6.2);
-      float halo = exp(-r2 * 2.2) * 0.22;
-      float a = (core + halo) * vAlpha * 0.55;
+      float core = exp(-r2 * 7.0);
+      float halo = exp(-r2 * 3.2) * 0.20;
+      // Nearly-opaque cream core (MAX/premult will not stack to a white slab).
+      float a = clamp(core * 1.0 + halo, 0.0, 1.0) * vAlpha;
       if (a < 0.015) discard;
       // v5f cream-white, held glow, no black rim
       vec3 col = vec3(1.0, 0.988, 0.976);
@@ -750,12 +773,14 @@
   `;
 
   function initGL() {
-    const ctx = canvas.getContext("webgl", {
+    const glOpts = {
       alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false,
       powerPreference: "high-performance", preserveDrawingBuffer: true,
-    });
+    };
+    const ctx = canvas.getContext("webgl2", glOpts) || canvas.getContext("webgl", glOpts);
     if (!ctx) throw new Error("WebGL is required");
     gl = ctx;
+    const isGL2 = (typeof WebGL2RenderingContext !== "undefined") && (gl instanceof WebGL2RenderingContext);
     const pGlobe = program(gl, VS_GLOBE, FS_GLOBE);
     const pDots = program(gl, VS_DOTS, FS_DOTS);
     const quad = gl.createBuffer();
@@ -786,7 +811,15 @@
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 64, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, progPix);
 
     const ext = gl.getExtension("OES_element_index_uint");
-    programs = { pGlobe, pDots, quad, dbuf, n, progTex, progPix, hasUint: !!ext };
+    let hasMax = false, maxEq = 0;
+    if (isGL2) { hasMax = true; maxEq = gl.MAX; }
+    else {
+      const extMin = gl.getExtension("EXT_blend_minmax");
+      if (extMin) { hasMax = true; maxEq = extMin.MAX_EXT; }
+    }
+    const ibo = gl.createBuffer();
+    programs = { pGlobe, pDots, quad, dbuf, n, progTex, progPix, ibo,
+      hasUint: !!(ext || isGL2), hasMax, maxEq, isGL2 };
     return programs;
   }
 
@@ -1401,6 +1434,131 @@
     state.time = t;
   }
 
+
+  function pointSizeFor(cam, dpr) {
+    // Smaller in screen px when the camera is close, so cores stay distinct.
+    const viewN = Math.min(Math.max(cam.view, 14), 80);
+    const css = 2.45 + 1.05 * (viewN - 14) / 66;
+    return css * dpr * pointScale;
+  }
+
+  const thin = {
+    idx: null, sx: null, sy: null, rk: null,
+    head: null, next: null, kept: null,
+  };
+
+  function ensureThin(n, nCells) {
+    if (!thin.idx || thin.idx.length < n) {
+      thin.idx = new Uint32Array(n);
+      thin.sx = new Float32Array(n);
+      thin.sy = new Float32Array(n);
+      thin.rk = new Uint16Array(n);
+      thin.next = new Int32Array(n);
+      thin.kept = new Uint32Array(n);
+    }
+    if (!thin.head || thin.head.length < nCells) {
+      thin.head = new Int32Array(Math.max(nCells, 262144));
+    }
+  }
+
+  // Screen-space Poisson thinning: keep a dot unless a better-rank neighbour
+  // would overlap its core. The hash grid is only an accelerator; decisions
+  // use true pixel distance and a stable per-dot rank, so no lattice appears.
+  function buildThinIbo(sz, cam, prog, sizePx) {
+    const W = sz.W, H = sz.H;
+    const minSep = Math.max(1.2, sizePx * 0.42);
+    const minSep2 = minSep * minSep;
+    const cell = minSep;
+    const nCx = ((W / cell) | 0) + 4;
+    const nCy = ((H / cell) | 0) + 4;
+    const nCells = nCx * nCy;
+    ensureThin(dots.count, nCells);
+
+    const P = 1 / Math.cos(Math.min(Math.max(cam.view, 8), 89) * 0.01745329252);
+    const rMax = Math.sqrt((P - 1) / (P + 1));
+    const R = T.globe.r * (W / 1080);
+    const CX = T.globe.cx * W;
+    const CY = T.globe.cy * H;
+    const lonC = cam.lon * 0.01745329252;
+    const latC = cam.lat * 0.01745329252;
+    const sinLatC = Math.sin(latC), cosLatC = Math.cos(latC);
+    const zCut = 1 / P - 1e-6;
+    const scale = R / rMax;
+
+    const lonA = dots.lon, latA = dots.lat, rankA = dots.rank;
+    const start = dots.cidStart, cc = dots.cidCount;
+    const idx = thin.idx, sxA = thin.sx, syA = thin.sy, rkA = thin.rk;
+    let m = 0;
+    for (let c = 1; c < 64; c++) {
+      const p = prog[c] || 0;
+      if (p <= 0 || cc[c] <= 0) continue;
+      const i0 = start[c], i1 = i0 + cc[c];
+      for (let i = i0; i < i1; i++) {
+        const rank01 = rankA[i] / 65535;
+        if (p <= 0.02 + 0.92 * rank01) continue;
+        const lonR = lonA[i] * 0.01745329252;
+        const latR = latA[i] * 0.01745329252;
+        const sinLat = Math.sin(latR), cosLat = Math.cos(latR);
+        const dlon = lonR - lonC;
+        const cosD = Math.cos(dlon);
+        const Z = sinLatC * sinLat + cosLatC * cosLat * cosD;
+        if (Z <= zCut) continue;
+        const X = cosLat * Math.sin(dlon);
+        const Y = cosLatC * sinLat - sinLatC * cosLat * cosD;
+        const s = (P - 1) / (P - Z);
+        const sx = CX + s * X * scale;
+        const sy = CY - s * Y * scale;
+        if (sx < -4 || sy < -4 || sx > W + 4 || sy > H + 4) continue;
+        idx[m] = i;
+        sxA[m] = sx;
+        syA[m] = sy;
+        rkA[m] = rankA[i];
+        m++;
+      }
+    }
+
+    const head = thin.head;
+    head.fill(-1, 0, nCells);
+    const next = thin.next;
+    for (let k = 0; k < m; k++) {
+      const gx = ((sxA[k] / cell) | 0) + 2;
+      const gy = ((syA[k] / cell) | 0) + 2;
+      if (gx < 0 || gy < 0 || gx >= nCx || gy >= nCy) continue;
+      const c = gx + gy * nCx;
+      next[k] = head[c];
+      head[c] = k;
+    }
+
+    const kept = thin.kept;
+    let nk = 0;
+    for (let k = 0; k < m; k++) {
+      const x = sxA[k], y = syA[k], rk = rkA[k], id = idx[k];
+      const gx = ((x / cell) | 0) + 2;
+      const gy = ((y / cell) | 0) + 2;
+      let hide = false;
+      for (let ix = gx - 1; ix <= gx + 1 && !hide; ix++) {
+        if (ix < 0 || ix >= nCx) continue;
+        for (let iy = gy - 1; iy <= gy + 1; iy++) {
+          if (iy < 0 || iy >= nCy) continue;
+          let j = head[ix + iy * nCx];
+          while (j >= 0) {
+            if (j !== k) {
+              const dx = x - sxA[j], dy = y - syA[j];
+              if (dx * dx + dy * dy < minSep2) {
+                const r2 = rkA[j];
+                if (r2 < rk || (r2 === rk && idx[j] < id)) { hide = true; break; }
+              }
+            }
+            j = next[j];
+          }
+          if (hide) break;
+        }
+      }
+      if (!hide) kept[nk++] = idx[k];
+    }
+    return nk;
+  }
+
   function drawGlobeFixed(sz, cam, prog, t) {
     const { W, H, dpr } = sz;
     gl.viewport(0, 0, W, H);
@@ -1412,7 +1570,13 @@
 
     if (t >= T.tDots0) {
       gl.enable(gl.BLEND);
-      gl.blendFunc(gl.ONE, gl.ONE);
+      if (programs.hasMax) {
+        gl.blendEquation(programs.maxEq);
+        gl.blendFunc(gl.ONE, gl.ONE);
+      } else {
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      }
       gl.useProgram(programs.pDots);
       gl.bindBuffer(gl.ARRAY_BUFFER, programs.dbuf);
       const lxy = gl.getAttribLocation(programs.pDots, "aXY");
@@ -1434,7 +1598,7 @@
       gl.uniform1f(D("uView"), cam.view);
       gl.uniform4f(D("uBakeWH"), T.bake.w, T.bake.h, T.bake.lon0, T.bake.lat1);
       gl.uniform4f(D("uBakeSpan"), T.bake.lon1 - T.bake.lon0, T.bake.lat1 - T.bake.lat0, 0, 0);
-      const size = (1.8 + 1.7 * (24 / Math.max(cam.view, 16))) * dpr * pointScale;
+      const size = pointSizeFor(cam, dpr);
       gl.uniform1f(D("uSize"), size);
       const pix = programs.progPix;
       for (let i = 0; i < 64; i++) pix[i] = Math.max(0, Math.min(255, Math.round((prog[i] || 0) * 255)));
@@ -1443,8 +1607,18 @@
       gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
       gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 64, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, pix);
       gl.uniform1i(D("uProgTex"), 1);
-      const n = programs.n;
-      gl.drawArrays(gl.POINTS, 0, n);
+      const nk = buildThinIbo(sz, cam, prog, size);
+      if (nk > 0) {
+        if (nk > 65535 && !programs.hasUint) {
+          gl.drawArrays(gl.POINTS, 0, programs.n);
+        } else {
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, programs.ibo);
+          gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, thin.kept.subarray(0, nk), gl.DYNAMIC_DRAW);
+          const typ = programs.hasUint ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
+          gl.drawElements(gl.POINTS, nk, typ, 0);
+        }
+      }
+      gl.blendEquation(gl.FUNC_ADD);
       gl.disable(gl.BLEND);
     }
   }
@@ -1588,15 +1762,16 @@
   async function boot() {
     try {
       const [timeline, buf, landBuf, flagImg] = await Promise.all([
-        fetchJSON("data/timeline.json"),
-        fetchBuf("data/dots.bin"),
-        fetchBuf("data/land.bin"),
+        fetchJSON("data/timeline.json?v=6"),
+        fetchBuf("data/dots.bin?v=6"),
+        fetchBuf("data/land.bin?v=6"),
         loadImage("data/flags.png"),
       ]);
       T = timeline;
       duration = T.duration;
       state.duration = duration;
       dots = parseDots(buf);
+      decorateDots();
       land = parseLand(landBuf);
       flagAtlas = flagImg;
       prepareLabelAnchors();
