@@ -5,6 +5,7 @@
   const $ = (id) => document.getElementById(id);
   const stage = $("stage");
   const canvas = $("globe");
+  const mapCanvas = $("map");
   const overlay = $("overlay");
   const hud = $("hud");
   const listEl = $("list");
@@ -46,7 +47,10 @@
   let pointScale = 1;
   let dprCap = 2;
   let octx = null;
+  let mctx = null;
+  let land = null;
   let endDrawn = false;
+  const labelVis = new Map(); // key -> display alpha (smoothed)
 
   const state = {
     time: 0,
@@ -93,7 +97,24 @@
     }
     return fmtRunning(Math.max(0, w.mid * p), T.dotScale);
   }
-  function shortName(w) {
+  function labelHero(w, p) {
+    // Tight enough to sit on the land; keep ranges honest but short.
+    if (p < 0.995) return fmtRunning(Math.max(0, w.mid * p), T.dotScale);
+    const lo = w.lo, hi = w.hi;
+    if (lo == null || hi == null || lo === hi) return fmtInt(w.mid || lo || 0);
+    if (lo >= 1e6 || hi >= 1e6) {
+      const one = (n) => {
+        const q = n / 1e6;
+        return q === (q | 0) ? String(q) : q.toFixed(1);
+      };
+      return `${one(lo)}–${one(hi)}M`;
+    }
+    if (lo >= 10000 && hi >= 10000) {
+      return `${fmtInt(Math.round(lo / 1000))}–${fmtInt(Math.round(hi / 1000))}k`;
+    }
+    return `${fmtInt(lo)}–${fmtInt(hi)}`;
+  }
+    function shortName(w) {
     const raw = (w.short || w.name || w.key || "").toUpperCase();
     return (T.aliases && T.aliases[raw]) || raw;
   }
@@ -189,6 +210,305 @@
     const sx = CX + ((s * X) / rMax) * R;
     const sy = CY - ((s * Y) / rMax) * R;
     return { x: sx, y: sy, z: Z, r: R, cx: CX, cy: CY };
+  }
+
+  function bakeToLonLat(x, y) {
+    return {
+      lon: dots.lon0 + (x + 0.5) / dots.bakeW * (dots.lon1 - dots.lon0),
+      lat: dots.lat1 - (y + 0.5) / dots.bakeH * (dots.lat1 - dots.lat0),
+    };
+  }
+
+  function prepareLabelAnchors() {
+    // Main dot-cluster + geographic span per country id, so labels sit on the land they count.
+    const cell = 1; // degrees
+    const grids = new Map();
+    const box = new Map();
+    const n = dots.count;
+    for (let i = 0; i < n; i++) {
+      const cid = dots.cid[i];
+      if (!cid) continue;
+      const p = bakeToLonLat(dots.x[i], dots.y[i]);
+      let g = grids.get(cid);
+      if (!g) { g = new Map(); grids.set(cid, g); }
+      const key = (Math.floor(p.lon / cell) * 1000 + Math.floor(p.lat / cell));
+      let c = g.get(key);
+      if (!c) { c = { n: 0, slon: 0, slat: 0 }; g.set(key, c); }
+      c.n++; c.slon += p.lon; c.slat += p.lat;
+      let b = box.get(cid);
+      if (!b) {
+        b = { n: 0, lonMin: p.lon, lonMax: p.lon, latMin: p.lat, latMax: p.lat };
+        box.set(cid, b);
+      }
+      b.n++;
+      if (p.lon < b.lonMin) b.lonMin = p.lon;
+      if (p.lon > b.lonMax) b.lonMax = p.lon;
+      if (p.lat < b.latMin) b.latMin = p.lat;
+      if (p.lat > b.latMax) b.latMax = p.lat;
+    }
+    const cluster = new Map();
+    for (const [cid, g] of grids) {
+      let best = null;
+      for (const c of g.values()) {
+        if (!best || c.n > best.n) best = c;
+      }
+      const b = box.get(cid);
+      const midLat = (b.latMin + b.latMax) * 0.5;
+      const span = Math.max(
+        b.latMax - b.latMin,
+        (b.lonMax - b.lonMin) * Math.max(0.2, Math.cos(midLat * Math.PI / 180))
+      );
+      cluster.set(cid, {
+        lon: best.slon / best.n,
+        lat: best.slat / best.n,
+        span: Math.max(0.2, span),
+      });
+    }
+    for (const w of T.windows) {
+      const c = w.cid ? cluster.get(w.cid) : null;
+      if (c && !w.isPlace) {
+        w._lon = c.lon;
+        w._lat = c.lat;
+        w._span = c.span;
+      } else {
+        w._lon = w.lon;
+        w._lat = w.lat;
+        w._span = w.ring || w.isPlace ? 1.1 : 3.0;
+      }
+      // US national total sits in the interior so state flags can occupy the coast.
+      if (w.key === "United States") {
+        w._lon = -92;
+        w._lat = 38;
+        w._span = Math.max(w._span, 12);
+      }
+      // Map-unit label height (degrees): fits in/beside the area, same scale as the land.
+      if (w.ring) w._labelDeg = Math.min(0.7, Math.max(0.4, w._span * 0.35));
+      else if (w.isPlace) w._labelDeg = Math.min(1.2, Math.max(0.8, w._span * 0.28));
+      else w._labelDeg = Math.min(1.6, Math.max(0.35, w._span * 0.16));
+    }
+  }
+
+  function scaleAt(lon, lat, cam, W, H) {
+    const pr = projectPoint(lon, lat, cam.lon, cam.lat, cam.view, W, H);
+    if (!pr) return null;
+    const d = 0.35;
+    const cos = Math.max(0.25, Math.cos(lat * Math.PI / 180));
+    const pe = projectPoint(lon + d / cos, lat, cam.lon, cam.lat, cam.view, W, H);
+    const pn = projectPoint(lon, lat + d, cam.lon, cam.lat, cam.view, W, H);
+    let s = 0, n = 0;
+    if (pe) { s += Math.hypot(pe.x - pr.x, pe.y - pr.y) / d; n++; }
+    if (pn) { s += Math.hypot(pn.x - pr.x, pn.y - pr.y) / d; n++; }
+    if (!n || s <= 1) return null;
+    return { pr, pxPerDeg: s / n };
+  }
+
+
+  function parseLand(buf) {
+    const v = new DataView(buf);
+    const magic = String.fromCharCode(v.getUint8(0), v.getUint8(1), v.getUint8(2), v.getUint8(3));
+    if (magic !== "LND2") throw new Error("bad land magic");
+    const nfeat = v.getUint32(6, true);
+    let off = 10;
+    const zig = (u) => (u >>> 1) ^ -(u & 1);
+    const varint = () => {
+      let u = 0, s = 0, b;
+      do { b = v.getUint8(off++); u |= (b & 0x7f) << s; s += 7; } while (b & 0x80);
+      return u >>> 0;
+    };
+    const decLon = (q) => q / 65535 * 360 - 180;
+    const decLat = (q) => q / 65535 * 180 - 90;
+    const feats = new Array(nfeat);
+    for (let i = 0; i < nfeat; i++) {
+      const nr = v.getUint16(off, true); off += 2;
+      const rings = new Array(nr);
+      let lonMin = 180, lonMax = -180, latMin = 90, latMax = -90;
+      for (let r = 0; r < nr; r++) {
+        const n = v.getUint16(off, true); off += 2;
+        let qlon = v.getUint16(off, true), qlat = v.getUint16(off + 2, true); off += 4;
+        const coords = new Float32Array(n * 2);
+        coords[0] = decLon(qlon); coords[1] = decLat(qlat);
+        if (coords[0] < lonMin) lonMin = coords[0];
+        if (coords[0] > lonMax) lonMax = coords[0];
+        if (coords[1] < latMin) latMin = coords[1];
+        if (coords[1] > latMax) latMax = coords[1];
+        for (let k = 1; k < n; k++) {
+          qlon += zig(varint());
+          qlat += zig(varint());
+          const lon = decLon(qlon), lat = decLat(qlat);
+          coords[k * 2] = lon; coords[k * 2 + 1] = lat;
+          if (lon < lonMin) lonMin = lon;
+          if (lon > lonMax) lonMax = lon;
+          if (lat < latMin) latMin = lat;
+          if (lat > latMax) latMax = lat;
+        }
+        rings[r] = coords;
+      }
+      feats[i] = { rings, lonMin, lonMax, latMin, latMax };
+    }
+    return feats;
+  }
+
+  function projectFull(lon, lat, camLon, camLat, view, W, H) {
+    const P = cameraP(view);
+    const rMax = Math.sqrt((P - 1) / (P + 1));
+    const R = T.globe.r * (W / 1080);
+    const CX = T.globe.cx * W, CY = T.globe.cy * H;
+    const lonC = camLon * Math.PI / 180, latC = camLat * Math.PI / 180;
+    const lonR = lon * Math.PI / 180, latR = lat * Math.PI / 180;
+    const X = Math.cos(latR) * Math.sin(lonR - lonC);
+    const Y = Math.cos(latC) * Math.sin(latR) - Math.sin(latC) * Math.cos(latR) * Math.cos(lonR - lonC);
+    const Z = Math.sin(latC) * Math.sin(latR) + Math.cos(latC) * Math.cos(latR) * Math.cos(lonR - lonC);
+    const zClip = 1 / P - 1e-6;
+    if (Z <= zClip) return { X, Y, Z, vis: false };
+    const s = (P - 1) / (P - Z);
+    return { x: CX + (s * X) / rMax * R, y: CY - (s * Y) / rMax * R, X, Y, Z, vis: true };
+  }
+
+  function interpLimb(a, b, P, rMax, R, CX, CY) {
+    const zClip = 1 / P - 1e-6;
+    const t = (zClip - a.Z) / (b.Z - a.Z);
+    const X = a.X + (b.X - a.X) * t;
+    const Y = a.Y + (b.Y - a.Y) * t;
+    const Z = zClip;
+    const s = (P - 1) / (P - Z);
+    return { x: CX + (s * X) / rMax * R, y: CY - (s * Y) / rMax * R, X, Y, Z, vis: true, limb: true };
+  }
+
+  function closeWithArc(chain, CX, CY, R) {
+    if (chain.length < 2) return chain;
+    const A = chain[0], B = chain[chain.length - 1];
+    const a0 = Math.atan2(A.y - CY, A.x - CX);
+    const a1 = Math.atan2(B.y - CY, B.x - CX);
+    const midCh = chain[(chain.length * 0.5) | 0];
+    function midPt(ccw) {
+      let d = a0 - a1; // B -> A
+      if (ccw) { if (d < 0) d += Math.PI * 2; }
+      else { if (d > 0) d -= Math.PI * 2; }
+      const m = a1 + d * 0.5;
+      const r = R * 0.97;
+      return { x: CX + r * Math.cos(m), y: CY + r * Math.sin(m) };
+    }
+    const mCcw = midPt(true), mCw = midPt(false);
+    const dCcw = (mCcw.x - midCh.x) ** 2 + (mCcw.y - midCh.y) ** 2;
+    const dCw = (mCw.x - midCh.x) ** 2 + (mCw.y - midCh.y) ** 2;
+    const ccw = dCcw < dCw;
+    let d = a0 - a1;
+    if (ccw) { if (d < 0) d += Math.PI * 2; }
+    else { if (d > 0) d -= Math.PI * 2; }
+    const steps = Math.max(3, Math.min(48, Math.ceil(Math.abs(d) * R / 10)));
+    const out = chain.slice();
+    for (let i = 1; i < steps; i++) {
+      const m = a1 + d * (i / steps);
+      out.push({ x: CX + R * Math.cos(m), y: CY + R * Math.sin(m), limb: true });
+    }
+    return out;
+  }
+
+  function clipRing(coords, cam, W, H) {
+    const P = cameraP(cam.view);
+    const rMax = Math.sqrt((P - 1) / (P + 1));
+    const R = T.globe.r * (W / 1080);
+    const CX = T.globe.cx * W, CY = T.globe.cy * H;
+    const n = coords.length / 2;
+    const pts = new Array(n);
+    let visN = 0;
+    for (let i = 0; i < n; i++) {
+      pts[i] = projectFull(coords[i * 2], coords[i * 2 + 1], cam.lon, cam.lat, cam.view, W, H);
+      if (pts[i].vis) visN++;
+    }
+    if (visN === 0) return [];
+    if (visN === n) return [pts];
+    const chains = [];
+    let cur = [];
+    for (let i = 0; i < n; i++) {
+      const a = pts[i], b = pts[(i + 1) % n];
+      if (a.vis) cur.push(a);
+      if (a.vis !== b.vis) {
+        cur.push(interpLimb(a, b, P, rMax, R, CX, CY));
+        if (!b.vis) {
+          if (cur.length >= 2) chains.push(cur);
+          cur = [];
+        }
+      }
+    }
+    if (cur.length) {
+      if (chains.length && pts[0].vis) chains[0] = cur.concat(chains[0]);
+      else chains.push(cur);
+    }
+    return chains.filter((ch) => ch.length >= 3).map((ch) => closeWithArc(ch, CX, CY, R));
+  }
+
+  function featureFrontish(f, cam) {
+    // Closest point of the bbox to the camera, so huge back-facing continents are skipped.
+    const clon = Math.min(f.lonMax, Math.max(f.lonMin, cam.lon));
+    const clat = Math.min(f.latMax, Math.max(f.latMin, cam.lat));
+    const latC = cam.lat * Math.PI / 180, latR = clat * Math.PI / 180;
+    const dlon = (clon - cam.lon) * Math.PI / 180;
+    const cosC = Math.sin(latC) * Math.sin(latR) + Math.cos(latC) * Math.cos(latR) * Math.cos(dlon);
+    return cosC > -0.18;
+  }
+
+  function drawVectorMap(sz, cam) {
+    if (!mapCanvas) return;
+    const { W, H, dpr } = sz;
+    const ctx = mctx || (mctx = mapCanvas.getContext("2d", { alpha: false }));
+    const R = T.globe.r * (W / 1080);
+    const CX = T.globe.cx * W, CY = T.globe.cy * H;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "rgb(22,20,18)";
+    ctx.fillRect(0, 0, W, H);
+    // Ocean disc — flat, no haze, 1 px antialiased limb
+    ctx.beginPath();
+    ctx.arc(CX, CY, R, 0, Math.PI * 2);
+    ctx.fillStyle = "rgb(62,72,78)";
+    ctx.fill();
+    if (!land || !land.length) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(CX, CY, R, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = "rgb(118,105,70)";
+    ctx.strokeStyle = "rgb(74,66,44)";
+    ctx.lineWidth = Math.max(1, dpr); // 1 CSS pixel, crisp AA
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.miterLimit = 2;
+    const minSpan = cam.view > 55 ? 0.22 : cam.view > 35 ? 0.07 : 0;
+    const strideView = cam.view;
+    const ringForView = (coords) => {
+      const n = coords.length / 2;
+      let step = 1;
+      if (strideView > 60 && n > 60) step = 4;
+      else if (strideView > 45 && n > 60) step = 3;
+      else if (strideView > 30 && n > 80) step = 2;
+      if (step === 1) return coords;
+      const out = new Float32Array((Math.floor((n - 1) / step) + 2) * 2);
+      let j = 0;
+      for (let i = 0; i < n; i += step) {
+        out[j++] = coords[i * 2];
+        out[j++] = coords[i * 2 + 1];
+      }
+      if ((n - 1) % step !== 0) {
+        out[j++] = coords[(n - 1) * 2];
+        out[j++] = coords[(n - 1) * 2 + 1];
+      }
+      return out.subarray(0, j);
+    };
+    ctx.beginPath();
+    for (const f of land) {
+      if (!featureFrontish(f, cam)) continue;
+      if (minSpan && (f.lonMax - f.lonMin) < minSpan && (f.latMax - f.latMin) < minSpan) continue;
+      for (const ring of f.rings) {
+        const clipped = clipRing(ringForView(ring), cam, W, H);
+        for (const ch of clipped) {
+          ctx.moveTo(ch[0].x, ch[0].y);
+          for (let i = 1; i < ch.length; i++) ctx.lineTo(ch[i].x, ch[i].y);
+          ctx.closePath();
+        }
+      }
+    }
+    ctx.fill("nonzero");
+    ctx.restore();
   }
 
   function compile(gl, type, src) {
@@ -325,7 +645,7 @@
 
   function initGL() {
     const ctx = canvas.getContext("webgl", {
-      alpha: false, antialias: false, depth: false, stencil: false,
+      alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false,
       powerPreference: "high-performance", preserveDrawingBuffer: true,
     });
     if (!ctx) throw new Error("WebGL is required");
@@ -409,6 +729,7 @@
     if (canvas.width !== W || canvas.height !== H) {
       canvas.width = W; canvas.height = H;
       overlay.width = W; overlay.height = H;
+      if (mapCanvas) { mapCanvas.width = W; mapCanvas.height = H; }
     }
     return { W, H, cssW, cssH, dpr };
   }
@@ -435,23 +756,13 @@
         running += w.mid * p;
       }
       if (!groupOn) continue;
-      let appear = w.t0;
-      if (t < appear || t >= T.tEnd0) continue;
-      const fadeIn = (t - appear) < 0.35 ? smoothstep((t - appear) / 0.35) : 1;
-      const ts = Math.max(w.tSet, w.b - T.rowFadeLeave);
-      let leave = 1;
-      if (t >= ts) leave = 1 - smoothstep((t - ts) / T.rowFadeLeave);
-      const alpha = fadeIn * Math.max(0, Math.min(1, leave));
-      if (alpha <= 0.02) continue;
+      if (t < w.t0 || t >= T.tEnd0) continue;
+      const fadeIn = (t - w.t0) < 0.35 ? smoothstep((t - w.t0) / 0.35) : 1;
+      if (fadeIn <= 0.02) continue;
       let role = "waiting";
       if (p >= 0.995) role = "done";
       else if (p > 0 || t >= w.t0) role = "building";
-      rows.push({ w, p, role, alpha });
-    }
-    if (rows.length > T.maxRows) {
-      const pri = { building: 0, done: 1, waiting: 2 };
-      rows.sort((a, b) => (pri[a.role] - pri[b.role]) || (b.alpha - a.alpha));
-      rows.length = T.maxRows;
+      rows.push({ w, p, role, alpha: fadeIn });
     }
     return { prog, running, rows };
   }
@@ -548,59 +859,183 @@
   // Fix dots draw with stride: we rebuild a simple index by drawing points in steps from JS
   // by creating one extra attribute aIndex. Patch after first run if needed.
 
+  function hudReserveY(sz) {
+    // Keep TOTAL DEATHS clear: fade labels that enter this band, never move them.
+    const { cssW, cssH, dpr } = sz;
+    const s = cssW / 1080;
+    const brand = Math.max(13, Math.min(26, 3.2 * 0.01 * cssW));
+    const totallbl = Math.max(12, Math.min(24, 2.9 * 0.01 * cssW));
+    const total = Math.max(34, Math.min(84, 9 * 0.01 * cssW));
+    return Math.min(0.34 * cssH, 16 + brand + 10 + totallbl + total + 14) * dpr;
+  }
+
   function drawOverlay(sz, cam, rows, t) {
-    const { W, H, dpr } = sz;
+    const { W, H, dpr, cssW } = sz;
     const ctx = octx || (octx = overlay.getContext("2d"));
     ctx.clearRect(0, 0, W, H);
-    if (t < T.tDots0 || t >= T.tEnd0) return;
-    // rings
+    if (t < T.tDots0 || t >= T.tEnd0) {
+      labelVis.clear();
+      return;
+    }
+    // rings (unchanged)
+    const ringRad = new Map();
     for (const w of T.windows) {
       if (!w.ring) continue;
       if (t < w.a - 0.2 || t > w.b + 0.4) continue;
       const pr = projectPoint(w.lon, w.lat, cam.lon, cam.lat, cam.view, W, H);
       if (!pr) continue;
       const rad = Math.max(8 * dpr, Math.min(28 * dpr, (14 * 40 / Math.max(cam.view, 12)) * dpr));
-      const a = 0.85;
+      ringRad.set(w.key, rad);
       ctx.beginPath();
       ctx.arc(pr.x, pr.y, rad, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(236,224,196,${a})`;
+      ctx.strokeStyle = "rgba(236,224,196,0.85)";
       ctx.lineWidth = Math.max(1, 1.6 * dpr);
       ctx.stroke();
     }
+    drawLandLabels(ctx, sz, cam, rows, t, ringRad);
   }
 
-  function renderList(rows, cam, sz) {
-    if (!rows.length || filmTime < T.tDots0 || filmTime >= T.tEnd0) {
-      listEl.hidden = true;
-      listEl.innerHTML = "";
-      return;
-    }
-    // Prefer the emptier side: if a featured country projects on the right, use left.
-    let side = "right";
-    if (rows.length) {
-      const w = rows[0].w;
-      const pr = projectPoint(w.lon, w.lat, cam.lon, cam.lat, cam.view, sz.W, sz.H);
-      if (pr && pr.x > sz.W * 0.55) side = "left";
-    }
-    listEl.className = "list " + side;
-    listEl.hidden = false;
+  function drawLandLabels(ctx, sz, cam, rows, t, ringRad) {
+    const { W, H, dpr, cssW } = sz;
+    const hudY = hudReserveY(sz);
+    const zClip = 1 / cameraP(cam.view);
     const fw = T.flags.w, fh = T.flags.h;
-    const flScale = (sz.cssW || 1080) / 1080;
-    let html = "";
+    const laid = [];
+    const refScale = scaleAt(cam.lon, cam.lat, cam, W, H);
+
     for (const r of rows) {
       const w = r.w;
-      const hero = (r.role === "waiting" && r.p <= 0.001) ? "0" : tickingHero(w, r.p);
-      const name = shortName(w);
-      let flag = "";
-      if (w.flag && flagAtlas) {
-        const s = w.flag;
-        const h = T.list.flagH * flScale;
-        const k = h / s.h;
-        flag = `<span class="flag" style="width:${(s.w*k).toFixed(1)}px;height:${h}px;background:url('data/flags.png') no-repeat;background-size:${fw*k}px ${fh*k}px;background-position:${-s.x*k}px ${-s.y*k}px"></span>`;
+      const sc = scaleAt(w._lon, w._lat, cam, W, H);
+      let target = r.alpha;
+      let item = null;
+      if (!sc) {
+        target = 0;
+      } else {
+        const { pr } = sc;
+        // Fade as the point slides behind the limb or off the frame — no snapping.
+        const limb = smoothstep((pr.z - zClip) / 0.16);
+        const edge = smoothstep(Math.min(pr.x, pr.y, W - pr.x, H - pr.y) / (16 * dpr));
+        target *= limb * edge;
+        // Screen height comes from a fixed map-unit size, so the label shrinks with the land.
+        // Clamp near the limb so projection stretch can't blow a label into a black smear.
+        let pxPerDeg = sc.pxPerDeg;
+        if (refScale && refScale.pxPerDeg > 1) {
+          if (sc.pxPerDeg > refScale.pxPerDeg * 1.6) target *= 0.0;
+          pxPerDeg = Math.min(pxPerDeg, refScale.pxPerDeg * 1.2);
+        }
+        // Map-constant size, but never a blown-up smear near the limb.
+        const rawH = w._labelDeg * pxPerDeg;
+        const fontPx = Math.min(rawH, 36 * dpr);
+        const hCss = fontPx / dpr;
+        const minPx = 9;
+        const sizeFade = smoothstep((hCss - minPx) / 3);
+        target *= sizeFade;
+        if (hCss > 40) target = 0;
+        if (target > 0.02 && hCss >= minPx) {
+          const flagH = fontPx * 0.92;
+          const gap = Math.max(2 * dpr, fontPx * 0.18);
+          const hero = (r.role === "waiting" && r.p <= 0.001) ? "0" : labelHero(w, r.p);
+          ctx.font = `${Math.max(1, fontPx)}px BlackOpsOne, sans-serif`;
+          const textW = ctx.measureText(hero).width;
+          let flagW = 0;
+          if (w.flag && flagAtlas && flagH > 1) flagW = (w.flag.w / w.flag.h) * flagH;
+          const boxW = flagW + (flagW ? gap : 0) + textW;
+          const boxH = Math.max(flagH, fontPx);
+          let cx = pr.x, cy = pr.y;
+          if (w.ring) {
+            // Sit beside the thin circle, outward from the globe centre — direction is stable.
+            const rad = ringRad.get(w.key) || (12 * dpr);
+            let vx = pr.x - pr.cx, vy = pr.y - pr.cy;
+            const len = Math.hypot(vx, vy);
+            if (len < 1) { vx = 1; vy = 0; }
+            else { vx /= len; vy /= len; }
+            const push = rad + 5 * dpr + boxW * 0.5;
+            cx = pr.x + vx * push;
+            cy = pr.y + vy * push;
+          }
+          const x0 = cx - boxW * 0.5;
+          const y0 = cy - boxH * 0.5;
+          // Reserve the TOTAL DEATHS band: fade, never relocate.
+          if (y0 < hudY) {
+            const cut = 1 - smoothstep((hudY - y0) / Math.max(8 * dpr, boxH));
+            target *= cut;
+          }
+          // Off-screen fade (box mostly gone)
+          const visX = Math.min(x0 + boxW, W) - Math.max(x0, 0);
+          const visY = Math.min(y0 + boxH, H) - Math.max(y0, 0);
+          if (visX <= 0 || visY <= 0) target = 0;
+          else target *= smoothstep((visX / boxW) * (visY / boxH));
+          item = { r, w, hero, fontPx, flagH, flagW, gap, boxW, boxH, x0, y0, target };
+        }
       }
-      html += `<div class="row ${r.role}" style="opacity:${r.alpha.toFixed(3)}">${flag}<span class="name">${name}</span><span class="count">${hero}</span></div>`;
+      if (item && item.target > 0.02) laid.push(item);
+      else if (!labelVis.has(w.key)) { /* nothing */ }
+      else {
+        // still track fade-out for keys that just left
+        laid.push({ r, w, fadeOnly: true, target: 0 });
+      }
     }
-    listEl.innerHTML = html;
+
+    // Overlaps: fade the lower-count label; never jump positions.
+    laid.sort((a, b) => (b.w.mid - a.w.mid) || a.w.key.localeCompare(b.w.key));
+    const kept = [];
+    for (const it of laid) {
+      if (it.fadeOnly) continue;
+      let hit = 1;
+      for (const k of kept) {
+        const ox = Math.min(it.x0 + it.boxW, k.x0 + k.boxW) - Math.max(it.x0, k.x0);
+        const oy = Math.min(it.y0 + it.boxH, k.y0 + k.boxH) - Math.max(it.y0, k.y0);
+        if (ox > 0 && oy > 0) {
+          const frac = (ox * oy) / Math.max(1, Math.min(it.boxW * it.boxH, k.boxW * k.boxH));
+          hit = Math.min(hit, 1 - smoothstep(frac / 0.15));
+        }
+      }
+      it.target *= hit;
+      if (it.target > 0.04) kept.push(it);
+    }
+
+    const seen = new Set();
+    const rate = 8; // 1/s toward target — smooth, no snaps
+    const dt = 1 / 60;
+    for (const it of laid) {
+      const key = it.w.key;
+      seen.add(key);
+      const prev = labelVis.has(key) ? labelVis.get(key) : 0;
+      const a = prev + (it.target - prev) * Math.min(1, rate * dt);
+      if (a <= 0.02) { labelVis.set(key, 0); continue; }
+      labelVis.set(key, a);
+      if (it.fadeOnly) continue;
+      ctx.globalAlpha = a;
+      const yMid = it.y0 + it.boxH * 0.5;
+      let x = it.x0;
+      if (it.flagW > 1 && it.w.flag && flagAtlas) {
+        const s = it.w.flag;
+        ctx.drawImage(flagAtlas, s.x, s.y, s.w, s.h,
+                      x, yMid - it.flagH * 0.5, it.flagW, it.flagH);
+        x += it.flagW + it.gap;
+      }
+      ctx.font = `${Math.max(1, it.fontPx)}px BlackOpsOne, sans-serif`;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = Math.max(2.2 * dpr, it.fontPx * 0.28);
+      ctx.strokeStyle = "rgba(8,6,4,0.92)";
+      ctx.fillStyle = "rgba(236,224,196,1)";
+      ctx.strokeText(it.hero, x, yMid);
+      ctx.fillText(it.hero, x, yMid);
+      ctx.globalAlpha = 1;
+    }
+    for (const key of Array.from(labelVis.keys())) {
+      if (!seen.has(key)) labelVis.delete(key);
+    }
+  }
+
+  function renderList() {
+    // Country counts now sit on the globe. Keep TOTAL DEATHS fixed; never snap a list.
+    if (listEl && !listEl.hidden) {
+      listEl.hidden = true;
+      listEl.innerHTML = "";
+    }
   }
 
   function setCards(t) {
@@ -637,14 +1072,24 @@
     if (!T || !flagAtlas) { /* basemap enough */ }
     const c = endPlate.getContext("2d");
     const w = endPlate.width, h = endPlate.height;
-    c.fillStyle = "#12100e";
+    c.fillStyle = "rgb(62,72,78)";
     c.fillRect(0, 0, w, h);
-    // Draw the basemap image if loaded
-    const img = basemapTex && basemapTex._img;
-    if (img) {
-      c.globalAlpha = 0.7;
-      c.drawImage(img, 0, 0, w, h);
-      c.globalAlpha = 1;
+    if (land && land.length) {
+      const lon0 = T.bake.lon0, lon1 = T.bake.lon1, lat0 = T.bake.lat0, lat1 = T.bake.lat1;
+      const toX = (lon) => (lon - lon0) / (lon1 - lon0) * w;
+      const toY = (lat) => (lat1 - lat) / (lat1 - lat0) * h;
+      c.fillStyle = "rgb(118,105,70)";
+      for (const f of land) {
+        c.beginPath();
+        for (const ring of f.rings) {
+          const n = ring.length / 2;
+          if (n < 3) continue;
+          c.moveTo(toX(ring[0]), toY(ring[1]));
+          for (let i = 1; i < n; i++) c.lineTo(toX(ring[i * 2]), toY(ring[i * 2 + 1]));
+          c.closePath();
+        }
+        c.fill("nonzero");
+      }
     }
     // Dots as tiny cream points in equirect
     if (dots) {
@@ -692,12 +1137,12 @@
       const fps = framesInWin / ((performance.now() - winStart) / 1000);
       framesInWin = 0;
       winStart = performance.now();
-      if (fps < 48 && quality > 0.28) {
+      if (fps < 40 && quality > 0.28) {
         quality = Math.max(0.28, quality * 0.72);
         stride = quality > 0.7 ? 1 : quality > 0.45 ? 2 : quality > 0.32 ? 3 : 4;
         pointScale = 0.85 + 0.2 * quality;
         if (fps < 36 && dprCap > 1) dprCap = 1;
-      } else if (fps > 57 && quality < 1) {
+      } else if (fps > 52 && quality < 1) {
         quality = Math.min(1, quality + 0.1);
         stride = quality > 0.7 ? 1 : quality > 0.45 ? 2 : 3;
         pointScale = 0.85 + 0.2 * quality;
@@ -711,8 +1156,8 @@
     const sz = sizeCanvas();
     const cam = camAt(t);
     const st = progressAt(t);
+    drawVectorMap(sz, cam);
     if (gl) {
-      // Always use a correct dots draw
       drawGlobeFixed(sz, cam, st.prog, t);
     }
     drawOverlay(sz, cam, st.rows, t);
@@ -726,33 +1171,11 @@
   function drawGlobeFixed(sz, cam, prog, t) {
     const { W, H, dpr } = sz;
     gl.viewport(0, 0, W, H);
-    const space = T.colors.space;
-    gl.clearColor(space[0]/255, space[1]/255, space[2]/255, 1);
+    gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     const R = T.globe.r * (W / 1080);
     const CX = T.globe.cx * W;
     const CY = T.globe.cy * H;
-
-    gl.disable(gl.BLEND);
-    gl.useProgram(programs.pGlobe);
-    gl.bindBuffer(gl.ARRAY_BUFFER, programs.quad);
-    const loc = gl.getAttribLocation(programs.pGlobe, "aPos");
-    gl.enableVertexAttribArray(loc);
-    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    const U = (n) => gl.getUniformLocation(programs.pGlobe, n);
-    gl.uniform2f(U("uRes"), W, H);
-    gl.uniform1f(U("uCX"), CX);
-    gl.uniform1f(U("uCY"), CY);
-    gl.uniform1f(U("uR"), R);
-    gl.uniform1f(U("uLon"), cam.lon);
-    gl.uniform1f(U("uLat"), cam.lat);
-    gl.uniform1f(U("uView"), cam.view);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, basemapTex);
-    gl.uniform1i(U("uMap"), 0);
-    gl.uniform4f(U("uBake"), T.bake.lon0, T.bake.lon1, T.bake.lat0, T.bake.lat1);
-    gl.uniform3f(U("uSpace"), space[0], space[1], space[2]);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
     if (t >= T.tDots0) {
       gl.enable(gl.BLEND);
@@ -938,20 +1361,21 @@
 
   async function boot() {
     try {
-      const [timeline, buf, mapImg, flagImg] = await Promise.all([
+      const [timeline, buf, landBuf, flagImg] = await Promise.all([
         fetchJSON("data/timeline.json"),
         fetchBuf("data/dots.bin"),
-        loadImage("data/basemap.jpg"),
+        fetchBuf("data/land.bin"),
         loadImage("data/flags.png"),
       ]);
       T = timeline;
       duration = T.duration;
       state.duration = duration;
       dots = parseDots(buf);
+      land = parseLand(landBuf);
       flagAtlas = flagImg;
+      prepareLabelAnchors();
       initGL();
-      basemapTex = makeTex(mapImg);
-      basemapTex._img = mapImg;
+      try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
       // Mobile starts a notch lower
       if (isPhone) {
         quality = 0.7;
