@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="/tuanmuda/ww2-dead/">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#161412">
+<meta name="description" content="Every death of World War II, one dot = 10 lives. A Muda's Atlas film by @youngsirmuda.">
+<link rel="icon" href="assets/favicon.png">
+<title>World War II · The Dead — Muda's Atlas</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="globe"></canvas>
+  <canvas id="overlay"></canvas>
+  <div class="hud" id="hud" hidden>
+    <div class="brand">MUDA'S ATLAS</div>
+    <div class="handle">@youngsirmuda</div>
+    <div class="totallbl">TOTAL DEATHS</div>
+    <div class="total" id="total">0</div>
+    <div class="legend">1 dot  =  10 lives</div>
+  </div>
+  <div class="list right" id="list" hidden></div>
+  <div class="card" id="titleCard" hidden>
+    <div class="kicker">WORLD WAR II</div>
+    <div class="hero">THE DEAD</div>
+    <div class="sub">1 DOT  =  10 LIVES</div>
+    <div class="years">1939–1945</div>
+    <div class="credit">Music: Virtutes Instrumenti  |  Kevin MacLeod  |  CC BY 4.0</div>
+  </div>
+  <div class="card" id="endCard" hidden>
+    <canvas class="end-plate" id="endPlate" width="1000" height="394"></canvas>
+    <div class="kicker">WORLD TOTAL</div>
+    <div class="hero">70–85 MILLION</div>
+    <div class="sub">estimates vary  |  lead often 60–75 million</div>
+    <div class="caveats">
+      <span class="caveat">Modern borders.</span>
+      <span class="caveat">Dot placement approximate, clustered at sourced events.</span>
+      <span class="caveat">Sources are official records and standard histories.</span>
+      <span class="caveat">Germany’s 1935–45 national flag is shown unblurred</span>
+      <span class="caveat">for historical educational use; platforms may still restrict it.</span>
+    </div>
+    <div class="credit">Music: Virtutes Instrumenti  |  Kevin MacLeod  |  CC BY 4.0</div>
+  </div>
+  <div id="loading">Loading the globe…</div>
+  <div class="gate hidden" id="gate">
+    <div class="kicker" style="font-family:AllertaStencil,sans-serif;color:#c4a04e;letter-spacing:.1em">MUDA'S ATLAS</div>
+    <h1>THE DEAD</h1>
+    <p>World War II · 1 dot = 10 lives</p>
+    <p class="hint" id="startHint">Tap to start</p>
+  </div>
+  <button type="button" id="restart" class="hidden" aria-label="Restart">Restart</button>
+  <div class="help hidden" id="help">
+    <div>
+      <h2>Controls</h2>
+      <ul>
+        <li>Tap or click — start, pause, resume</li>
+        <li>Space — pause / resume</li>
+        <li>R — restart</li>
+        <li>H — this help</li>
+        <li>Add <code>?w=1080&amp;h=1920</code> to lock a recording frame</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<audio id="music" src="assets/music.mp3" preload="auto" playsinline loop="false"></audio>
+<script src="js/app.js" defer></script>
+</body>
+</html>
