@@ -114,10 +114,39 @@
     }
     return `${fmtInt(lo)}–${fmtInt(hi)}`;
   }
-    function shortName(w) {
-    const raw = (w.short || w.name || w.key || "").toUpperCase();
-    return (T.aliases && T.aliases[raw]) || raw;
+  function titleCaseName(s) {
+    return String(s || "")
+      .replace(/^US-/, "")
+      .toLowerCase()
+      .replace(/&/g, "&")
+      .replace(/\b([a-z])/g, (m) => m.toUpperCase())
+      .replace(/\bD\.?c\.?\b/i, "D.C.")
+      .replace(/\bUs\b/, "US");
   }
+  const COMMON_NAMES = {
+    "Soviet Union": "USSR",
+    "Dutch East Indies": "Dutch East Indies",
+    "Papua and New Guinea": "Papua New Guinea",
+    "Malaya and Singapore": "Malaya",
+    "French Indochina": "French Indochina",
+    "South Seas Mandate": "South Seas Mandate",
+    "Portuguese Timor": "Portuguese Timor",
+    "Czechoslovakia": "Czechoslovakia",
+    "Ruanda-Urundi": "Ruanda-Urundi",
+    "United States": "United States",
+    "United Kingdom": "United Kingdom",
+    "New Zealand": "New Zealand",
+    "South Africa": "South Africa",
+  };
+  function labelName(w) {
+    const key = w.key || "";
+    if (COMMON_NAMES[key]) return COMMON_NAMES[key];
+    if (w.name && COMMON_NAMES[w.name]) return COMMON_NAMES[w.name];
+    // Places / states: readable name, not the US-XX key
+    if (w.isPlace) return titleCaseName(w.name || w.short || key);
+    return titleCaseName(key || w.name || w.short);
+  }
+  function shortName(w) { return labelName(w); }
 
   async function fetchBuf(url) {
     const r = await fetch(url);
@@ -219,48 +248,40 @@
     };
   }
 
+  function medianNum(a) {
+    a.sort((x, y) => x - y);
+    const m = a.length >> 1;
+    return a.length % 2 ? a[m] : 0.5 * (a[m - 1] + a[m]);
+  }
   function prepareLabelAnchors() {
-    // Main dot-cluster + geographic span per country id, so labels sit on the land they count.
-    const cell = 1; // degrees
-    const grids = new Map();
-    const box = new Map();
+    // Centroid of each country's own dots, so the label sits on that land (not a neighbour).
+    const acc = new Map();
     const n = dots.count;
     for (let i = 0; i < n; i++) {
       const cid = dots.cid[i];
       if (!cid) continue;
       const p = bakeToLonLat(dots.x[i], dots.y[i]);
-      let g = grids.get(cid);
-      if (!g) { g = new Map(); grids.set(cid, g); }
-      const key = (Math.floor(p.lon / cell) * 1000 + Math.floor(p.lat / cell));
-      let c = g.get(key);
-      if (!c) { c = { n: 0, slon: 0, slat: 0 }; g.set(key, c); }
-      c.n++; c.slon += p.lon; c.slat += p.lat;
-      let b = box.get(cid);
+      let b = acc.get(cid);
       if (!b) {
-        b = { n: 0, lonMin: p.lon, lonMax: p.lon, latMin: p.lat, latMax: p.lat };
-        box.set(cid, b);
+        b = { lons: [], lats: [], lonMin: p.lon, lonMax: p.lon, latMin: p.lat, latMax: p.lat };
+        acc.set(cid, b);
       }
-      b.n++;
+      b.lons.push(p.lon); b.lats.push(p.lat);
       if (p.lon < b.lonMin) b.lonMin = p.lon;
       if (p.lon > b.lonMax) b.lonMax = p.lon;
       if (p.lat < b.latMin) b.latMin = p.lat;
       if (p.lat > b.latMax) b.latMax = p.lat;
     }
     const cluster = new Map();
-    for (const [cid, g] of grids) {
-      let best = null;
-      for (const c of g.values()) {
-        if (!best || c.n > best.n) best = c;
-      }
-      const b = box.get(cid);
+    for (const [cid, b] of acc) {
       const midLat = (b.latMin + b.latMax) * 0.5;
       const span = Math.max(
         b.latMax - b.latMin,
         (b.lonMax - b.lonMin) * Math.max(0.2, Math.cos(midLat * Math.PI / 180))
       );
       cluster.set(cid, {
-        lon: best.slon / best.n,
-        lat: best.slat / best.n,
+        lon: medianNum(b.lons),
+        lat: medianNum(b.lats),
         span: Math.max(0.2, span),
       });
     }
@@ -621,8 +642,8 @@
       sy = uCY - ((s * Y) / rMax) * uR;
       vec2 clip = vec2((sx / uRes.x) * 2.0 - 1.0, 1.0 - (sy / uRes.y) * 2.0);
       gl_Position = vec4(clip, 0.0, 1.0);
-      float grow = clamp((32.0 / max(uView, 12.0)), 0.7, 1.35);
-      gl_PointSize = max(1.5, uSize * grow);
+      float grow = clamp((22.0 / max(uView, 16.0)), 0.55, 1.15);
+      gl_PointSize = max(1.2, min(uSize * grow, 5.5));
       vAlpha = pp * pp * (3.0 - 2.0 * pp);
     }
   `;
@@ -633,9 +654,9 @@
       vec2 p = gl_PointCoord * 2.0 - 1.0;
       float r2 = dot(p, p);
       if (r2 > 1.0) discard;
-      float core = exp(-r2 * 6.2);
-      float halo = exp(-r2 * 2.2) * 0.22;
-      float a = (core + halo) * vAlpha * 0.55;
+      float core = exp(-r2 * 8.4);
+      float halo = exp(-r2 * 3.6) * 0.10;
+      float a = (core + halo) * vAlpha * 0.34;
       if (a < 0.015) discard;
       // v5f cream-white, held glow, no black rim
       vec3 col = vec3(1.0, 0.988, 0.976);
@@ -822,7 +843,7 @@
       gl.uniform1f(D("uView"), cam.view);
       gl.uniform4f(D("uBakeWH"), T.bake.w, T.bake.h, T.bake.lon0, T.bake.lat1);
       gl.uniform4f(D("uBakeSpan"), T.bake.lon1 - T.bake.lon0, T.bake.lat1 - T.bake.lat0, 0, 0);
-      const size = (2.6 + 2.4 * (28 / Math.max(cam.view, 14))) * dpr * pointScale;
+      const size = (1.15 + 1.05 * (16 / Math.max(cam.view, 18))) * dpr * pointScale;
       gl.uniform1f(D("uSize"), size);
       gl.uniform1f(D("uStride"), stride);
       gl.uniform1f(D("uCount"), programs.n);
@@ -932,40 +953,64 @@
         target *= sizeFade;
         if (hCss > 40) target = 0;
         if (target > 0.02 && hCss >= minPx) {
-          const flagH = fontPx * 0.92;
-          const gap = Math.max(2 * dpr, fontPx * 0.18);
+          const name = labelName(w);
           const hero = (r.role === "waiting" && r.p <= 0.001) ? "0" : labelHero(w, r.p);
-          ctx.font = `${Math.max(1, fontPx)}px BlackOpsOne, sans-serif`;
-          const textW = ctx.measureText(hero).width;
-          let flagW = 0;
-          if (w.flag && flagAtlas && flagH > 1) flagW = (w.flag.w / w.flag.h) * flagH;
-          const boxW = flagW + (flagW ? gap : 0) + textW;
-          const boxH = Math.max(flagH, fontPx);
-          let cx = pr.x, cy = pr.y;
-          if (w.ring) {
-            // Sit beside the thin circle, outward from the globe centre — direction is stable.
-            const rad = ringRad.get(w.key) || (12 * dpr);
-            let vx = pr.x - pr.cx, vy = pr.y - pr.cy;
-            const len = Math.hypot(vx, vy);
-            if (len < 1) { vx = 1; vy = 0; }
-            else { vx /= len; vy /= len; }
-            const push = rad + 5 * dpr + boxW * 0.5;
-            cx = pr.x + vx * push;
-            cy = pr.y + vy * push;
+          const margin = Math.max(8, 0.02 * (sz.cssW || 390)) * dpr;
+          const minY = hudY + 4 * dpr;
+          const maxW = Math.max(48 * dpr, W - 2 * margin);
+          let usePx = fontPx;
+          let flagH, flagW, gap, namePx, nameW, heroW, boxW, boxH;
+          const measure = (fp) => {
+            flagH = fp * 0.92;
+            gap = Math.max(4 * dpr, fp * 0.28);
+            namePx = fp * 0.84;
+            ctx.font = `${Math.max(1, namePx)}px AllertaStencil, sans-serif`;
+            nameW = ctx.measureText(name).width;
+            ctx.font = `${Math.max(1, fp)}px BlackOpsOne, sans-serif`;
+            heroW = ctx.measureText(hero).width;
+            flagW = 0;
+            if (w.flag && flagAtlas && flagH > 1) flagW = (w.flag.w / w.flag.h) * flagH;
+            boxW = flagW + (flagW ? gap : 0) + nameW + gap + heroW;
+            boxH = Math.max(flagH, fp, namePx);
+          };
+          measure(usePx);
+          const place = () => {
+            let x0 = pr.x - flagW * 0.5;
+            let y0 = pr.y - boxH * 0.5;
+            if (w.ring) {
+              const rad = ringRad.get(w.key) || (12 * dpr);
+              let vx = pr.x - pr.cx, vy = pr.y - pr.cy;
+              const len = Math.hypot(vx, vy);
+              if (len < 1) { vx = 1; vy = 0; }
+              else { vx /= len; vy /= len; }
+              const push = rad + 5 * dpr + boxW * 0.5;
+              x0 = pr.x + vx * push - boxW * 0.5;
+              y0 = pr.y + vy * push - boxH * 0.5;
+            }
+            return { x0, y0 };
+          };
+          // Prefer shrinking so the flag can stay on the land, then clamp any remainder.
+          let pos = place();
+          const rightRoom = (W - margin) - pr.x;
+          const leftRoom = pr.x - margin;
+          const sRight = rightRoom / Math.max(1, boxW - flagW * 0.5);
+          const sLeft = leftRoom / Math.max(1, flagW * 0.5);
+          const sFit = Math.min(1, sRight, sLeft);
+          if (sFit < 0.999 || boxW > maxW) {
+            const s = Math.min(sFit, maxW / Math.max(1, boxW), 1);
+            usePx = Math.max(minPx * dpr, usePx * Math.max(0.05, s));
+            measure(usePx);
+            pos = place();
           }
-          const x0 = cx - boxW * 0.5;
-          const y0 = cy - boxH * 0.5;
-          // Reserve the TOTAL DEATHS band: fade, never relocate.
-          if (y0 < hudY) {
-            const cut = 1 - smoothstep((hudY - y0) / Math.max(8 * dpr, boxH));
-            target *= cut;
-          }
-          // Off-screen fade (box mostly gone)
-          const visX = Math.min(x0 + boxW, W) - Math.max(x0, 0);
-          const visY = Math.min(y0 + boxH, H) - Math.max(y0, 0);
-          if (visX <= 0 || visY <= 0) target = 0;
-          else target *= smoothstep((visX / boxW) * (visY / boxH));
-          item = { r, w, hero, fontPx, flagH, flagW, gap, boxW, boxH, x0, y0, target };
+          const hCss2 = usePx / dpr;
+          if (hCss2 < minPx) target *= 0;
+          let x0 = pos.x0, y0 = pos.y0;
+          // Keep the whole label on screen, with a margin. Clamp is continuous — no snaps.
+          if (x0 < margin) x0 = margin;
+          if (x0 + boxW > W - margin) x0 = W - margin - boxW;
+          if (y0 < minY) y0 = minY;
+          if (y0 + boxH > H - margin) y0 = H - margin - boxH;
+          item = { r, w, name, hero, fontPx: usePx, namePx, flagH, flagW, gap, nameW, heroW, boxW, boxH, x0, y0, target };
         }
       }
       if (item && item.target > 0.02) laid.push(item);
@@ -1014,13 +1059,19 @@
                       x, yMid - it.flagH * 0.5, it.flagW, it.flagH);
         x += it.flagW + it.gap;
       }
-      ctx.font = `${Math.max(1, it.fontPx)}px BlackOpsOne, sans-serif`;
       ctx.textAlign = "left";
       ctx.textBaseline = "middle";
       ctx.lineJoin = "round";
-      ctx.lineWidth = Math.max(2.2 * dpr, it.fontPx * 0.28);
       ctx.strokeStyle = "rgba(8,6,4,0.92)";
+      const stroke = (fp) => Math.max(2.0 * dpr, fp * 0.26);
+      ctx.font = `${Math.max(1, it.namePx)}px AllertaStencil, sans-serif`;
+      ctx.lineWidth = stroke(it.namePx);
       ctx.fillStyle = "rgba(236,224,196,1)";
+      ctx.strokeText(it.name, x, yMid);
+      ctx.fillText(it.name, x, yMid);
+      x += it.nameW + it.gap;
+      ctx.font = `${Math.max(1, it.fontPx)}px BlackOpsOne, sans-serif`;
+      ctx.lineWidth = stroke(it.fontPx);
       ctx.strokeText(it.hero, x, yMid);
       ctx.fillText(it.hero, x, yMid);
       ctx.globalAlpha = 1;
@@ -1201,7 +1252,7 @@
       gl.uniform1f(D("uView"), cam.view);
       gl.uniform4f(D("uBakeWH"), T.bake.w, T.bake.h, T.bake.lon0, T.bake.lat1);
       gl.uniform4f(D("uBakeSpan"), T.bake.lon1 - T.bake.lon0, T.bake.lat1 - T.bake.lat0, 0, 0);
-      const size = (1.8 + 1.7 * (24 / Math.max(cam.view, 16))) * dpr * pointScale;
+      const size = (1.15 + 1.05 * (16 / Math.max(cam.view, 18))) * dpr * pointScale;
       gl.uniform1f(D("uSize"), size);
       const pix = programs.progPix;
       for (let i = 0; i < 64; i++) pix[i] = Math.max(0, Math.min(255, Math.round((prog[i] || 0) * 255)));
