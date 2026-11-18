@@ -273,6 +273,32 @@
       if (p.lat > b.latMax) b.latMax = p.lat;
     }
     const cluster = new Map();
+    const pickSamples = (lons, lats, maxN) => {
+      const n = lons.length;
+      const out = [];
+      if (n <= maxN) {
+        for (let i = 0; i < n; i++) out.push({ lon: lons[i], lat: lats[i] });
+        return out;
+      }
+      const cells = new Map();
+      for (let i = 0; i < n; i++) {
+        const key = (Math.floor(lons[i] * 2) * 1000 + Math.floor(lats[i] * 2));
+        if (!cells.has(key)) cells.set(key, { lon: lons[i], lat: lats[i] });
+      }
+      const vals = Array.from(cells.values());
+      if (vals.length > maxN) {
+        const step = vals.length / maxN;
+        for (let i = 0; i < maxN; i++) out.push(vals[(i * step) | 0]);
+        return out;
+      }
+      if (vals.length < 8) {
+        const step = n / maxN;
+        for (let i = 0; i < maxN; i++) out.push({ lon: lons[(i * step) | 0], lat: lats[(i * step) | 0] });
+        return out;
+      }
+      return vals;
+    };
+    const samplesByCid = new Map();
     for (const [cid, b] of acc) {
       const midLat = (b.latMin + b.latMax) * 0.5;
       const span = Math.max(
@@ -284,6 +310,7 @@
         lat: medianNum(b.lats),
         span: Math.max(0.2, span),
       });
+      samplesByCid.set(cid, pickSamples(b.lons, b.lats, 24));
     }
     for (const w of T.windows) {
       const c = w.cid ? cluster.get(w.cid) : null;
@@ -291,10 +318,12 @@
         w._lon = c.lon;
         w._lat = c.lat;
         w._span = c.span;
+        w._samples = samplesByCid.get(w.cid) || [{ lon: c.lon, lat: c.lat }];
       } else {
         w._lon = w.lon;
         w._lat = w.lat;
         w._span = w.ring || w.isPlace ? 1.1 : 3.0;
+        w._samples = [{ lon: w.lon, lat: w.lat }];
       }
       // US national total sits in the interior so state flags can occupy the coast.
       if (w.key === "United States") {
@@ -396,27 +425,51 @@
   }
 
   function closeWithArc(chain, CX, CY, R) {
+    // Close a horizon-clipped coast along the limb, keeping land on the same
+    // side as the visible chain. The old "midpoint nearer the coast" test
+    // flipped over India and punched holes in Asia.
     if (chain.length < 2) return chain;
     const A = chain[0], B = chain[chain.length - 1];
     const a0 = Math.atan2(A.y - CY, A.x - CX);
     const a1 = Math.atan2(B.y - CY, B.x - CX);
-    const midCh = chain[(chain.length * 0.5) | 0];
-    function midPt(ccw) {
-      let d = a0 - a1; // B -> A
-      if (ccw) { if (d < 0) d += Math.PI * 2; }
-      else { if (d > 0) d -= Math.PI * 2; }
-      const m = a1 + d * 0.5;
-      const r = R * 0.97;
-      return { x: CX + r * Math.cos(m), y: CY + r * Math.sin(m) };
+    let dPlus = a0 - a1;
+    if (dPlus < 0) dPlus += Math.PI * 2;
+    const dMinus = dPlus - Math.PI * 2;
+    // Average turn of the visible coast, in canvas space (y down).
+    let turn = 0, tn = 0;
+    for (let i = 1; i < chain.length - 1; i++) {
+      const x0 = chain[i].x - chain[i - 1].x, y0 = chain[i].y - chain[i - 1].y;
+      const x1 = chain[i + 1].x - chain[i].x, y1 = chain[i + 1].y - chain[i].y;
+      const n0 = Math.hypot(x0, y0), n1 = Math.hypot(x1, y1);
+      if (n0 > 0.4 && n1 > 0.4) { turn += (x0 * y1 - y0 * x1) / (n0 * n1); tn++; }
     }
-    const mCcw = midPt(true), mCw = midPt(false);
-    const dCcw = (mCcw.x - midCh.x) ** 2 + (mCcw.y - midCh.y) ** 2;
-    const dCw = (mCw.x - midCh.x) ** 2 + (mCw.y - midCh.y) ** 2;
-    const ccw = dCcw < dCw;
-    let d = a0 - a1;
-    if (ccw) { if (d < 0) d += Math.PI * 2; }
-    else { if (d > 0) d -= Math.PI * 2; }
-    const steps = Math.max(3, Math.min(48, Math.ceil(Math.abs(d) * R / 10)));
+    const prev = chain.length >= 2 ? chain[chain.length - 2] : A;
+    const ix = B.x - prev.x, iy = B.y - prev.y;
+    const rx = B.x - CX, ry = B.y - CY;
+    // dθ>0 tangent at B on the limb: (-ry, rx)
+    const turnPlus = ix * rx - iy * (-ry);
+    let d;
+    if (tn < 1 && turn === 0) {
+      d = Math.abs(dPlus) <= Math.abs(dMinus) ? dPlus : dMinus;
+    } else {
+      const wantPos = turn >= 0;
+      d = ((turnPlus > 0) === wantPos) ? dPlus : dMinus;
+    }
+    // A small island must never close the long way around the disc.
+    let span = 0;
+    for (let i = 0; i < chain.length; i++) {
+      const dx = chain[i].x - CX, dy = chain[i].y - CY;
+      const ang = Math.atan2(dy, dx);
+      let da = ang - a1;
+      if (da > Math.PI) da -= Math.PI * 2;
+      if (da < -Math.PI) da += Math.PI * 2;
+      const ad = Math.abs(da);
+      if (ad > span) span = ad;
+    }
+    if (Math.abs(d) > Math.PI + 0.05 && span < 2.0) {
+      d = Math.abs(dPlus) <= Math.abs(dMinus) ? dPlus : dMinus;
+    }
+    const steps = Math.max(3, Math.min(64, Math.ceil(Math.abs(d) * R / 10)));
     const out = chain.slice();
     for (let i = 1; i < steps; i++) {
       const m = a1 + d * (i / steps);
@@ -499,9 +552,9 @@
     const ringForView = (coords) => {
       const n = coords.length / 2;
       let step = 1;
-      if (strideView > 60 && n > 60) step = 4;
-      else if (strideView > 45 && n > 60) step = 3;
-      else if (strideView > 30 && n > 80) step = 2;
+      // Mild thinning only — aggressive skips cut across bays and flip fills.
+      if (strideView > 70 && n > 400) step = 2;
+      else if (strideView > 50 && n > 800) step = 2;
       if (step === 1) return coords;
       const out = new Float32Array((Math.floor((n - 1) / step) + 2) * 2);
       let j = 0;
@@ -642,8 +695,8 @@
       sy = uCY - ((s * Y) / rMax) * uR;
       vec2 clip = vec2((sx / uRes.x) * 2.0 - 1.0, 1.0 - (sy / uRes.y) * 2.0);
       gl_Position = vec4(clip, 0.0, 1.0);
-      float grow = clamp((22.0 / max(uView, 16.0)), 0.55, 1.15);
-      gl_PointSize = max(1.2, min(uSize * grow, 5.5));
+      float grow = clamp((32.0 / max(uView, 12.0)), 0.7, 1.35);
+      gl_PointSize = max(1.6, uSize * grow);
       vAlpha = pp * pp * (3.0 - 2.0 * pp);
     }
   `;
@@ -654,9 +707,9 @@
       vec2 p = gl_PointCoord * 2.0 - 1.0;
       float r2 = dot(p, p);
       if (r2 > 1.0) discard;
-      float core = exp(-r2 * 8.4);
-      float halo = exp(-r2 * 3.6) * 0.10;
-      float a = (core + halo) * vAlpha * 0.34;
+      float core = exp(-r2 * 6.2);
+      float halo = exp(-r2 * 2.2) * 0.22;
+      float a = (core + halo) * vAlpha * 0.55;
       if (a < 0.015) discard;
       // v5f cream-white, held glow, no black rim
       vec3 col = vec3(1.0, 0.988, 0.976);
@@ -701,20 +754,39 @@
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 64, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, progPix);
 
     const ext = gl.getExtension("OES_element_index_uint");
-    const ibos = {};
+    const denseCells = [0, 0.12, 0.28, 0.55, 1.1, 2.2];
+    const denseIbos = [];
     if (ext) {
-      for (const step of [1, 2, 3, 4, 5, 6]) {
-        const count = Math.floor(n / step);
-        const idx = new Uint32Array(count);
-        for (let i = 0; i < count; i++) idx[i] = i * step;
+      // Level 0: every dot. Coarser levels keep the lowest-rank (first-revealed) dot in each cell,
+      // so dense regions thin out by screen density without dimming the points that remain.
+      for (let li = 0; li < denseCells.length; li++) {
+        const cell = denseCells[li];
+        let idx;
+        if (cell <= 0) {
+          idx = new Uint32Array(n);
+          for (let i = 0; i < n; i++) idx[i] = i;
+        } else {
+          const best = new Map();
+          for (let i = 0; i < n; i++) {
+            const p = bakeToLonLat(dots.x[i], dots.y[i]);
+            const key = (Math.floor(p.lon / cell) | 0) * 100000 + (Math.floor(p.lat / cell) | 0);
+            const prev = best.get(key);
+            if (prev == null || dots.rank[i] < prev.rank) best.set(key, { rank: dots.rank[i], i });
+          }
+          idx = new Uint32Array(best.size);
+          let j = 0;
+          for (const v of best.values()) idx[j++] = v.i;
+        }
         const ibo = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
-        ibos[step] = { ibo, count };
+        denseIbos[li] = { ibo, count: idx.length, cellDeg: cell };
       }
     }
+    // Keep a simple stride-1 fallback under the old name.
+    const ibos = { 1: denseIbos[0] };
 
-    programs = { pGlobe, pDots, quad, dbuf, n, progTex, progPix, ibos, hasUint: !!ext };
+    programs = { pGlobe, pDots, quad, dbuf, n, progTex, progPix, ibos, denseIbos, denseCells, hasUint: !!ext };
     return programs;
   }
 
@@ -728,6 +800,75 @@
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
     return tex;
+  }
+
+  function pointShowing(lon, lat, cam, W, H) {
+    const pr = projectPoint(lon, lat, cam.lon, cam.lat, cam.view, W, H);
+    if (!pr) return false;
+    const zClip = 1 / cameraP(cam.view);
+    // A sliver on the limb is not "showing" — need a clear on-screen patch.
+    if (pr.z <= zClip + 0.05) return false;
+    const m = 8;
+    return pr.x >= m && pr.x <= W - m && pr.y >= m && pr.y <= H - m;
+  }
+
+  function fracShowing(w, cam, W, H) {
+    const pts = w._samples || [{ lon: w._lon, lat: w._lat }];
+    let n = 0;
+    for (let i = 0; i < pts.length; i++) {
+      if (pointShowing(pts[i].lon, pts[i].lat, cam, W, H)) n++;
+    }
+    return n / Math.max(1, pts.length);
+  }
+
+  let revealKey = 0;
+  function computeRevealTimes(sz) {
+    if (!T || !T.windows || !T.path) return;
+    const { W, H } = sz;
+    const tDots0 = T.tDots0;
+    for (const w of T.windows) {
+      if (w._t0Bake == null) {
+        w._t0Bake = w.t0;
+        w._tSetBake = w.tSet;
+        w._durBake = Math.max(0.001, w.tSet - w.t0);
+      }
+      w.t0 = w._t0Bake;
+      w.tSet = w._tSetBake;
+      w._visDone = false;
+    }
+    const path = T.path;
+    const nW = T.windows.length;
+    let done = 0;
+    for (let i = 0; i < path.length; i++) {
+      if (done >= nW) break;
+      const p = path[i];
+      const t = p[0];
+      if (t < tDots0) continue;
+      const cam = { lon: p[1], lat: p[2], view: p[3] };
+      for (const w of T.windows) {
+        if (w._visDone) continue;
+        if (t >= w._t0Bake) {
+          w.t0 = w._t0Bake;
+          w.tSet = w._tSetBake;
+          w._visDone = true;
+          done++;
+          continue;
+        }
+        if (fracShowing(w, cam, W, H) >= 0.25) {
+          w.t0 = Math.max(tDots0, t);
+          w.tSet = w.t0 + w._durBake;
+          w._visDone = true;
+          done++;
+        }
+      }
+    }
+  }
+
+  function maybeComputeReveal(sz) {
+    const key = (sz.W * 10000 + sz.H) | 0;
+    if (key === revealKey) return;
+    revealKey = key;
+    computeRevealTimes(sz);
   }
 
   function sizeCanvas() {
@@ -843,7 +984,7 @@
       gl.uniform1f(D("uView"), cam.view);
       gl.uniform4f(D("uBakeWH"), T.bake.w, T.bake.h, T.bake.lon0, T.bake.lat1);
       gl.uniform4f(D("uBakeSpan"), T.bake.lon1 - T.bake.lon0, T.bake.lat1 - T.bake.lat0, 0, 0);
-      const size = (1.15 + 1.05 * (16 / Math.max(cam.view, 18))) * dpr * pointScale;
+      const size = (1.8 + 1.7 * (24 / Math.max(cam.view, 16))) * dpr * pointScale;
       gl.uniform1f(D("uSize"), size);
       gl.uniform1f(D("uStride"), stride);
       gl.uniform1f(D("uCount"), programs.n);
@@ -898,25 +1039,21 @@
       labelVis.clear();
       return;
     }
-    // rings (unchanged)
+    // Precompute ring radii for label placement; draw the circle only with the label.
     const ringRad = new Map();
+    const ringPr = new Map();
     for (const w of T.windows) {
       if (!w.ring) continue;
-      if (t < w.a - 0.2 || t > w.b + 0.4) continue;
       const pr = projectPoint(w.lon, w.lat, cam.lon, cam.lat, cam.view, W, H);
       if (!pr) continue;
       const rad = Math.max(8 * dpr, Math.min(28 * dpr, (14 * 40 / Math.max(cam.view, 12)) * dpr));
       ringRad.set(w.key, rad);
-      ctx.beginPath();
-      ctx.arc(pr.x, pr.y, rad, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(236,224,196,0.85)";
-      ctx.lineWidth = Math.max(1, 1.6 * dpr);
-      ctx.stroke();
+      ringPr.set(w.key, pr);
     }
-    drawLandLabels(ctx, sz, cam, rows, t, ringRad);
+    drawLandLabels(ctx, sz, cam, rows, t, ringRad, ringPr);
   }
 
-  function drawLandLabels(ctx, sz, cam, rows, t, ringRad) {
+  function drawLandLabels(ctx, sz, cam, rows, t, ringRad, ringPr) {
     const { W, H, dpr, cssW } = sz;
     const hudY = hudReserveY(sz);
     const zClip = 1 / cameraP(cam.view);
@@ -935,24 +1072,27 @@
         const { pr } = sc;
         // Fade as the point slides behind the limb or off the frame — no snapping.
         const limb = smoothstep((pr.z - zClip) / 0.16);
-        const edge = smoothstep(Math.min(pr.x, pr.y, W - pr.x, H - pr.y) / (16 * dpr));
+        // Don't fade at the top — the HUD clamp keeps the label on screen there (e.g. PNG coming in).
+        const edge = smoothstep(Math.min(pr.x, W - pr.x, H - pr.y, pr.y < 0 ? 0 : 1e9) / (16 * dpr));
         target *= limb * edge;
         // Screen height comes from a fixed map-unit size, so the label shrinks with the land.
         // Clamp near the limb so projection stretch can't blow a label into a black smear.
         let pxPerDeg = sc.pxPerDeg;
         if (refScale && refScale.pxPerDeg > 1) {
-          if (sc.pxPerDeg > refScale.pxPerDeg * 1.6) target *= 0.0;
+          // Clamp stretch near the limb; don't hide the label (PNG etc. sit off-centre).
           pxPerDeg = Math.min(pxPerDeg, refScale.pxPerDeg * 1.2);
         }
         // Map-constant size, but never a blown-up smear near the limb.
+        const fadeMin = 9;
+        const minRead = 12; // css px, readable on a 390-wide phone when the land is large
+        const landCss = (w._span * pxPerDeg) / dpr;
+        const largeLand = landCss >= 36;
         const rawH = w._labelDeg * pxPerDeg;
-        const fontPx = Math.min(rawH, 36 * dpr);
+        const fontPx = Math.min(Math.max(rawH, largeLand ? minRead * dpr : 0), 36 * dpr);
         const hCss = fontPx / dpr;
-        const minPx = 9;
-        const sizeFade = smoothstep((hCss - minPx) / 3);
-        target *= sizeFade;
+        if (!largeLand) target *= smoothstep((hCss - fadeMin) / 3);
         if (hCss > 40) target = 0;
-        if (target > 0.02 && hCss >= minPx) {
+        if (target > 0.02 && (largeLand || hCss >= fadeMin)) {
           const name = labelName(w);
           const hero = (r.role === "waiting" && r.p <= 0.001) ? "0" : labelHero(w, r.p);
           const margin = Math.max(8, 0.02 * (sz.cssW || 390)) * dpr;
@@ -978,14 +1118,13 @@
             let x0 = pr.x - flagW * 0.5;
             let y0 = pr.y - boxH * 0.5;
             if (w.ring) {
+              // Keep the flag+name+count attached to the circle. A long name
+              // must not be flung far away (that left empty circles on the sea).
               const rad = ringRad.get(w.key) || (12 * dpr);
-              let vx = pr.x - pr.cx, vy = pr.y - pr.cy;
-              const len = Math.hypot(vx, vy);
-              if (len < 1) { vx = 1; vy = 0; }
-              else { vx /= len; vy /= len; }
-              const push = rad + 5 * dpr + boxW * 0.5;
-              x0 = pr.x + vx * push - boxW * 0.5;
-              y0 = pr.y + vy * push - boxH * 0.5;
+              const gapR = rad + 6 * dpr;
+              x0 = pr.x + gapR;
+              y0 = pr.y - boxH * 0.5;
+              if (x0 + boxW > W - margin) x0 = pr.x - gapR - boxW;
             }
             return { x0, y0 };
           };
@@ -995,21 +1134,46 @@
           const leftRoom = pr.x - margin;
           const sRight = rightRoom / Math.max(1, boxW - flagW * 0.5);
           const sLeft = leftRoom / Math.max(1, flagW * 0.5);
+          // When the land is large, never shrink below a readable size — clamp to the frame instead.
+          const floorPx = (hCss >= minRead ? minRead : fadeMin) * dpr;
           const sFit = Math.min(1, sRight, sLeft);
           if (sFit < 0.999 || boxW > maxW) {
             const s = Math.min(sFit, maxW / Math.max(1, boxW), 1);
-            usePx = Math.max(minPx * dpr, usePx * Math.max(0.05, s));
+            const shrunk = usePx * Math.max(0.05, s);
+            usePx = Math.max(floorPx, shrunk);
             measure(usePx);
             pos = place();
           }
+          if (w.ring) {
+            const rad = ringRad.get(w.key) || (12 * dpr);
+            const gapR = rad + 6 * dpr;
+            const side = Math.max(8 * dpr, (W - margin) - (pr.x + gapR), (pr.x - gapR) - margin);
+            if (boxW > side) {
+              usePx = Math.max(fadeMin * dpr, usePx * (side / Math.max(1, boxW)));
+              measure(usePx);
+              pos = place();
+            }
+          }
           const hCss2 = usePx / dpr;
-          if (hCss2 < minPx) target *= 0;
+          if (hCss2 < fadeMin) target *= 0;
           let x0 = pos.x0, y0 = pos.y0;
           // Keep the whole label on screen, with a margin. Clamp is continuous — no snaps.
+          // Ring labels stay with their circle: if a clamp would tear them apart, fade instead.
+          const rawX = x0, rawY = y0;
           if (x0 < margin) x0 = margin;
           if (x0 + boxW > W - margin) x0 = W - margin - boxW;
           if (y0 < minY) y0 = minY;
           if (y0 + boxH > H - margin) y0 = H - margin - boxH;
+          if (w.ring) {
+            const dx = x0 - rawX, dy = y0 - rawY;
+            if (dx * dx + dy * dy > (24 * dpr) * (24 * dpr)) {
+              x0 = rawX; y0 = rawY;
+              const visX = Math.min(x0 + boxW, W - margin) - Math.max(x0, margin);
+              const visY = Math.min(y0 + boxH, H - margin) - Math.max(y0, minY);
+              const vis = (visX / Math.max(1, boxW)) * (visY / Math.max(1, boxH));
+              target *= vis > 0 ? smoothstep(vis) : 0;
+            }
+          }
           item = { r, w, name, hero, fontPx: usePx, namePx, flagH, flagW, gap, nameW, heroW, boxW, boxH, x0, y0, target };
         }
       }
@@ -1051,6 +1215,23 @@
       labelVis.set(key, a);
       if (it.fadeOnly) continue;
       ctx.globalAlpha = a;
+      if (it.w.ring) {
+        const pr = ringPr && ringPr.get(it.w.key);
+        const rad = ringRad.get(it.w.key);
+        if (pr && rad) {
+          const nx = Math.min(it.x0 + it.boxW, Math.max(it.x0, pr.x));
+          const ny = Math.min(it.y0 + it.boxH, Math.max(it.y0, pr.y));
+          const dist = Math.hypot(pr.x - nx, pr.y - ny);
+          // Never leave a lone circle if the flag+count isn't beside it.
+          if (dist <= rad + 16 * dpr) {
+            ctx.beginPath();
+            ctx.arc(pr.x, pr.y, rad, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(236,224,196,0.85)";
+            ctx.lineWidth = Math.max(1, 1.6 * dpr);
+            ctx.stroke();
+          }
+        }
+      }
       const yMid = it.y0 + it.boxH * 0.5;
       let x = it.x0;
       if (it.flagW > 1 && it.w.flag && flagAtlas) {
@@ -1205,6 +1386,7 @@
   function render(t) {
     if (!T || !ready) return;
     const sz = sizeCanvas();
+    maybeComputeReveal(sz);
     const cam = camAt(t);
     const st = progressAt(t);
     drawVectorMap(sz, cam);
@@ -1217,6 +1399,27 @@
     renderList(st.rows, cam, sz);
     applyAudio(t);
     state.time = t;
+  }
+
+  function pickDensityIbo(cam, sz) {
+    const levels = programs && programs.denseIbos;
+    if (!levels || !levels.length) return null;
+    const ref = scaleAt(cam.lon, cam.lat, cam, sz.W, sz.H);
+    const px = ref ? ref.pxPerDeg : 8;
+    // Aim for about 3.2 device pixels between kept dots in dense cells.
+    const want = 3.2 * (sz.dpr || 1) / Math.max(px, 0.5);
+    const cells = programs.denseCells;
+    let pick = 0;
+    if (want >= 0.08) {
+      for (let i = 0; i < cells.length; i++) {
+        pick = i;
+        if (cells[i] >= want) break;
+      }
+    }
+    // When the adaptor drops quality, step one level coarser rather than dimming.
+    if (quality < 0.40) pick = Math.min(pick + 2, cells.length - 1);
+    else if (quality < 0.55) pick = Math.min(pick + 1, cells.length - 1);
+    return levels[pick] || levels[0];
   }
 
   function drawGlobeFixed(sz, cam, prog, t) {
@@ -1252,7 +1455,7 @@
       gl.uniform1f(D("uView"), cam.view);
       gl.uniform4f(D("uBakeWH"), T.bake.w, T.bake.h, T.bake.lon0, T.bake.lat1);
       gl.uniform4f(D("uBakeSpan"), T.bake.lon1 - T.bake.lon0, T.bake.lat1 - T.bake.lat0, 0, 0);
-      const size = (1.15 + 1.05 * (16 / Math.max(cam.view, 18))) * dpr * pointScale;
+      const size = (1.8 + 1.7 * (24 / Math.max(cam.view, 16))) * dpr * pointScale;
       gl.uniform1f(D("uSize"), size);
       const pix = programs.progPix;
       for (let i = 0; i < 64; i++) pix[i] = Math.max(0, Math.min(255, Math.round((prog[i] || 0) * 255)));
@@ -1262,13 +1465,12 @@
       gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 64, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, pix);
       gl.uniform1i(D("uProgTex"), 1);
       const n = programs.n;
-      const step = Math.max(1, stride | 0);
-      const lod = programs.ibos[step] || programs.ibos[1];
+      const lod = pickDensityIbo(cam, sz) || programs.ibos[1];
       if (lod) {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, lod.ibo);
         gl.drawElements(gl.POINTS, lod.count, gl.UNSIGNED_INT, 0);
       } else {
-        gl.drawArrays(gl.POINTS, 0, Math.floor(n / step));
+        gl.drawArrays(gl.POINTS, 0, n);
       }
       gl.disable(gl.BLEND);
     }
@@ -1430,7 +1632,7 @@
       // Mobile starts a notch lower
       if (isPhone) {
         quality = 0.7;
-        stride = 2;
+        stride = 1;
         pointScale = 1.0;
       }
       ready = true;
