@@ -424,56 +424,53 @@
     return { x: CX + (s * X) / rMax * R, y: CY - (s * Y) / rMax * R, X, Y, Z, vis: true, limb: true };
   }
 
-  function closeWithArc(chain, CX, CY, R) {
-    // Close a horizon-clipped coast along the limb, keeping land on the same
-    // side as the visible chain. The old "midpoint nearer the coast" test
-    // flipped over India and punched holes in Asia.
-    if (chain.length < 2) return chain;
-    const A = chain[0], B = chain[chain.length - 1];
-    const a0 = Math.atan2(A.y - CY, A.x - CX);
-    const a1 = Math.atan2(B.y - CY, B.x - CX);
-    let dPlus = a0 - a1;
-    if (dPlus < 0) dPlus += Math.PI * 2;
-    const dMinus = dPlus - Math.PI * 2;
-    // Average turn of the visible coast, in canvas space (y down).
-    let turn = 0, tn = 0;
-    for (let i = 1; i < chain.length - 1; i++) {
-      const x0 = chain[i].x - chain[i - 1].x, y0 = chain[i].y - chain[i - 1].y;
-      const x1 = chain[i + 1].x - chain[i].x, y1 = chain[i + 1].y - chain[i].y;
-      const n0 = Math.hypot(x0, y0), n1 = Math.hypot(x1, y1);
-      if (n0 > 0.4 && n1 > 0.4) { turn += (x0 * y1 - y0 * x1) / (n0 * n1); tn++; }
+  function limbAz(p) {
+    // Screen-sense azimuth of a camera-space point on (or behind) the limb. y is down.
+    return Math.atan2(-p.Y, p.X);
+  }
+
+  function limbArcPoints(fromP, toP, hiddenAz, CX, CY, R) {
+    // Intermediate clip-circle points from fromP to toP, following the hidden
+    // coast's azimuth (spherical clip). Does not include fromP or toP.
+    const a1 = limbAz(fromP), a0 = limbAz(toP);
+    const az = [a1];
+    for (let i = 0; i < hiddenAz.length; i++) {
+      if (hiddenAz[i] != null) az.push(hiddenAz[i]);
     }
-    const prev = chain.length >= 2 ? chain[chain.length - 2] : A;
-    const ix = B.x - prev.x, iy = B.y - prev.y;
-    const rx = B.x - CX, ry = B.y - CY;
-    // dθ>0 tangent at B on the limb: (-ry, rx)
-    const turnPlus = ix * rx - iy * (-ry);
-    let d;
-    if (tn < 1 && turn === 0) {
-      d = Math.abs(dPlus) <= Math.abs(dMinus) ? dPlus : dMinus;
-    } else {
-      const wantPos = turn >= 0;
-      d = ((turnPlus > 0) === wantPos) ? dPlus : dMinus;
-    }
-    // A small island must never close the long way around the disc.
-    let span = 0;
-    for (let i = 0; i < chain.length; i++) {
-      const dx = chain[i].x - CX, dy = chain[i].y - CY;
-      const ang = Math.atan2(dy, dx);
-      let da = ang - a1;
+    az.push(a0);
+    let d = 0;
+    for (let i = 1; i < az.length; i++) {
+      let da = az[i] - az[i - 1];
       if (da > Math.PI) da -= Math.PI * 2;
       if (da < -Math.PI) da += Math.PI * 2;
-      const ad = Math.abs(da);
-      if (ad > span) span = ad;
+      if (Math.abs(da) > 2.4) continue;
+      d += da;
     }
-    if (Math.abs(d) > Math.PI + 0.05 && span < 2.0) {
-      d = Math.abs(dPlus) <= Math.abs(dMinus) ? dPlus : dMinus;
+    if (!isFinite(d) || Math.abs(d) < 1e-6) {
+      d = a0 - a1;
+      if (d > Math.PI) d -= Math.PI * 2;
+      if (d < -Math.PI) d += Math.PI * 2;
     }
-    const steps = Math.max(3, Math.min(64, Math.ceil(Math.abs(d) * R / 10)));
-    const out = chain.slice();
+    while (d > Math.PI * 2) d -= Math.PI * 2;
+    while (d < -Math.PI * 2) d += Math.PI * 2;
+    const steps = Math.max(2, Math.min(64, Math.ceil(Math.abs(d) * R / 10)));
+    const out = [];
     for (let i = 1; i < steps; i++) {
       const m = a1 + d * (i / steps);
       out.push({ x: CX + R * Math.cos(m), y: CY + R * Math.sin(m), limb: true });
+    }
+    return out;
+  }
+
+  function hiddenAzimuths(pts, exitI, entryI) {
+    const n = pts.length;
+    const out = [];
+    if (n === 0 || exitI == null || entryI == null) return out;
+    for (let j = (exitI + 1) % n; j !== entryI; j = (j + 1) % n) {
+      const p = pts[j];
+      if (!p || p.vis) continue;
+      if (Math.hypot(p.X, p.Y) < 0.12) continue;
+      out.push(limbAz(p));
     }
     return out;
   }
@@ -494,22 +491,57 @@
     if (visN === n) return [pts];
     const chains = [];
     let cur = [];
+    let entryI = -1, exitI = -1;
     for (let i = 0; i < n; i++) {
       const a = pts[i], b = pts[(i + 1) % n];
-      if (a.vis) cur.push(a);
+      if (a.vis) {
+        cur.push(a);
+        if (entryI < 0) entryI = i;
+        exitI = i;
+      }
       if (a.vis !== b.vis) {
         cur.push(interpLimb(a, b, P, rMax, R, CX, CY));
         if (!b.vis) {
-          if (cur.length >= 2) chains.push(cur);
+          if (cur.length >= 2) {
+            cur.entryI = entryI;
+            cur.exitI = exitI;
+            chains.push(cur);
+          }
           cur = [];
+          entryI = -1;
+          exitI = -1;
         }
       }
     }
     if (cur.length) {
-      if (chains.length && pts[0].vis) chains[0] = cur.concat(chains[0]);
-      else chains.push(cur);
+      if (chains.length && pts[0].vis) {
+        const first = chains[0];
+        const merged = cur.concat(first);
+        merged.entryI = entryI >= 0 ? entryI : first.entryI;
+        merged.exitI = first.exitI;
+        chains[0] = merged;
+      } else {
+        cur.entryI = entryI;
+        cur.exitI = exitI;
+        chains.push(cur);
+      }
     }
-    return chains.filter((ch) => ch.length >= 3).map((ch) => closeWithArc(ch, CX, CY, R));
+    const usable = chains.filter((ch) => ch.length >= 3);
+    if (!usable.length) return [];
+    // Stitch every visible chain of this ring with the hidden limb arc
+    // that actually sits between it and the next chain. Closing each chain
+    // on its own (the long way around the rest of the ring) was filling
+    // the ocean as land over India.
+    const poly = [];
+    for (let i = 0; i < usable.length; i++) {
+      const ch = usable[i];
+      const next = usable[(i + 1) % usable.length];
+      for (let k = 0; k < ch.length; k++) poly.push(ch[k]);
+      const hid = hiddenAzimuths(pts, ch.exitI, next.entryI);
+      const arc = limbArcPoints(ch[ch.length - 1], next[0], hid, CX, CY, R);
+      for (let k = 0; k < arc.length; k++) poly.push(arc[k]);
+    }
+    return [poly];
   }
 
   function featureFrontish(f, cam) {
@@ -754,39 +786,7 @@
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 64, 1, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, progPix);
 
     const ext = gl.getExtension("OES_element_index_uint");
-    const denseCells = [0, 0.12, 0.28, 0.55, 1.1, 2.2];
-    const denseIbos = [];
-    if (ext) {
-      // Level 0: every dot. Coarser levels keep the lowest-rank (first-revealed) dot in each cell,
-      // so dense regions thin out by screen density without dimming the points that remain.
-      for (let li = 0; li < denseCells.length; li++) {
-        const cell = denseCells[li];
-        let idx;
-        if (cell <= 0) {
-          idx = new Uint32Array(n);
-          for (let i = 0; i < n; i++) idx[i] = i;
-        } else {
-          const best = new Map();
-          for (let i = 0; i < n; i++) {
-            const p = bakeToLonLat(dots.x[i], dots.y[i]);
-            const key = (Math.floor(p.lon / cell) | 0) * 100000 + (Math.floor(p.lat / cell) | 0);
-            const prev = best.get(key);
-            if (prev == null || dots.rank[i] < prev.rank) best.set(key, { rank: dots.rank[i], i });
-          }
-          idx = new Uint32Array(best.size);
-          let j = 0;
-          for (const v of best.values()) idx[j++] = v.i;
-        }
-        const ibo = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
-        denseIbos[li] = { ibo, count: idx.length, cellDeg: cell };
-      }
-    }
-    // Keep a simple stride-1 fallback under the old name.
-    const ibos = { 1: denseIbos[0] };
-
-    programs = { pGlobe, pDots, quad, dbuf, n, progTex, progPix, ibos, denseIbos, denseCells, hasUint: !!ext };
+    programs = { pGlobe, pDots, quad, dbuf, n, progTex, progPix, hasUint: !!ext };
     return programs;
   }
 
@@ -1401,27 +1401,6 @@
     state.time = t;
   }
 
-  function pickDensityIbo(cam, sz) {
-    const levels = programs && programs.denseIbos;
-    if (!levels || !levels.length) return null;
-    const ref = scaleAt(cam.lon, cam.lat, cam, sz.W, sz.H);
-    const px = ref ? ref.pxPerDeg : 8;
-    // Aim for about 3.2 device pixels between kept dots in dense cells.
-    const want = 3.2 * (sz.dpr || 1) / Math.max(px, 0.5);
-    const cells = programs.denseCells;
-    let pick = 0;
-    if (want >= 0.08) {
-      for (let i = 0; i < cells.length; i++) {
-        pick = i;
-        if (cells[i] >= want) break;
-      }
-    }
-    // When the adaptor drops quality, step one level coarser rather than dimming.
-    if (quality < 0.40) pick = Math.min(pick + 2, cells.length - 1);
-    else if (quality < 0.55) pick = Math.min(pick + 1, cells.length - 1);
-    return levels[pick] || levels[0];
-  }
-
   function drawGlobeFixed(sz, cam, prog, t) {
     const { W, H, dpr } = sz;
     gl.viewport(0, 0, W, H);
@@ -1465,13 +1444,7 @@
       gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 64, 1, gl.LUMINANCE, gl.UNSIGNED_BYTE, pix);
       gl.uniform1i(D("uProgTex"), 1);
       const n = programs.n;
-      const lod = pickDensityIbo(cam, sz) || programs.ibos[1];
-      if (lod) {
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, lod.ibo);
-        gl.drawElements(gl.POINTS, lod.count, gl.UNSIGNED_INT, 0);
-      } else {
-        gl.drawArrays(gl.POINTS, 0, n);
-      }
+      gl.drawArrays(gl.POINTS, 0, n);
       gl.disable(gl.BLEND);
     }
   }
