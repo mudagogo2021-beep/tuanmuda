@@ -1,0 +1,105 @@
+{
+  "updated": "2026-11-20T21:04:50-05:00",
+  "stuckAfterMinutes": 120,
+  "bots": [
+    {
+      "id": "mudasir",
+      "name": "Mudasir",
+      "role": "Primary bot — routes tasks",
+      "status": "working",
+      "task": "Bot office page and disk cleanup",
+      "updated": "2026-11-20T21:04:50-05:00"
+    },
+    {
+      "id": "bizdev",
+      "name": "BizDev & Marketing",
+      "role": "Business development, portfolio and promotion",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "lawyer",
+      "name": "Lawyer",
+      "role": "Legal questions",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "disk-saver",
+      "name": "Disk Saver",
+      "role": "Disk audits and cleanup",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "youtubeshort",
+      "name": "Youtubeshort",
+      "role": "30-second current-events Shorts",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "laptop",
+      "name": "LAPTOP BOT",
+      "role": "Laptop work and video editing",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "job-apps",
+      "name": "Job Apps",
+      "role": "Job search and applications",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "publisher",
+      "name": "Publisher",
+      "role": "Kindle / KDP books",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "moral-shorts",
+      "name": "Moral Shorts",
+      "role": "Animated moral-lesson Shorts",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "vr-apps",
+      "name": "VR Apps",
+      "role": "Meta Quest WebXR apps",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "second-brain",
+      "name": "Second Brain",
+      "role": "Personal knowledge base",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "malaysian-politics",
+      "name": "Malaysian Politics",
+      "role": "Malaysian politics content",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "blender",
+      "name": "BLENDER",
+      "role": "Blender and 3D work",
+      "status": "unknown",
+      "task": "not reported yet"
+    },
+    {
+      "id": "map-maker",
+      "name": "Map Maker",
+      "role": "Maps for videos",
+      "status": "unknown",
+      "task": "not reported yet"
+    }
+  ]
+}
