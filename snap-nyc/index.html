@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-slate-50">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>SNAP Flow Explorer: NYC: Where federal food dollars go</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{tier1:'#0071CE',tier2:'#D91E2A',tier3:'#FFD200',tier4:'#475569',tier5:'#0F766E'}}}}</script>
+<style>
+.tab-active{border-bottom-color:#38bdf8!important;color:#fff!important;font-weight:700}
+input[type=range]{accent-color:#0284c7;width:100%}
+.est{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;padding:0 5px;vertical-align:middle}
+.src{font-size:11px;color:#64748b}
+.src a,.prose-a a{color:#0369a1;text-decoration:underline}
+sup a{color:#0369a1;font-weight:700;text-decoration:none}
+</style>
+</head>
+<body class="font-sans text-slate-800 antialiased min-h-screen flex flex-col">
+
+<header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
+  <div class="max-w-6xl mx-auto px-4">
+    <div class="flex items-center justify-between py-3 gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-9 h-9 shrink-0 rounded-lg bg-sky-600 flex items-center justify-center font-black text-lg">$</div>
+        <div class="min-w-0">
+          <h1 class="text-base sm:text-xl font-bold tracking-tight leading-tight">SNAP Flow Explorer: NYC</h1>
+          <p class="text-[11px] text-slate-400 truncate">Federal food dollars, city-owned groceries, and the data the grocery lobby keeps secret</p>
+        </div>
+      </div>
+      <button onclick="downloadCSV()" class="shrink-0 px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-md">CSV</button>
+    </div>
+    <nav class="flex gap-5 overflow-x-auto text-xs sm:text-sm font-medium text-slate-400 -mb-px">
+      <button data-tab="nyc" class="tab-btn tab-active pb-3 border-b-2 border-transparent whitespace-nowrap">1. NYC simulator</button>
+      <button data-tab="flow" class="tab-btn pb-3 border-b-2 border-transparent whitespace-nowrap">2. Where SNAP $ go</button>
+      <button data-tab="secret" class="tab-btn pb-3 border-b-2 border-transparent whitespace-nowrap">3. Why store data is secret</button>
+      <button data-tab="trend" class="tab-btn pb-3 border-b-2 border-transparent whitespace-nowrap">4. U.S. &amp; NY totals</button>
+      <button data-tab="bill" class="tab-btn pb-3 border-b-2 border-transparent whitespace-nowrap">5. Draft amendment</button>
+      <button data-tab="sources" class="tab-btn pb-3 border-b-2 border-transparent whitespace-nowrap">Sources</button>
+    </nav>
+  </div>
+</header>
+
+<main class="flex-1 max-w-6xl w-full mx-auto px-4 py-5 space-y-5">
+
+  <!-- KPI strip -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200">
+      <div class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">NYC SNAP recipients</div>
+      <div class="text-xl sm:text-2xl font-black text-slate-900 mt-1">1.61M</div>
+      <div class="text-[11px] text-slate-500">979,040 households · Aug 2026<sup><a href="#s-nys">[4]</a></sup></div>
+    </div>
+    <div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200">
+      <div class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">NYC SNAP benefits</div>
+      <div class="text-xl sm:text-2xl font-black text-sky-700 mt-1">$5.04B</div>
+      <div class="text-[11px] text-slate-500">FY2025 (Oct 2024–Sep 2025)<sup><a href="#s-nys">[4]</a></sup></div>
+    </div>
+    <div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200">
+      <div class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">U.S. SNAP benefits</div>
+      <div class="text-xl sm:text-2xl font-black text-slate-900 mt-1">$95.76B</div>
+      <div class="text-[11px] text-slate-500">FY2025, 42.1M people/mo<sup><a href="#s-fns-annual">[1]</a></sup></div>
+    </div>
+    <div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200">
+      <div class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-500">Big-store share</div>
+      <div class="text-xl sm:text-2xl font-black text-tier2 mt-1">78%</div>
+      <div class="text-[11px] text-slate-500">of U.S. SNAP $ at supermarkets &amp; super stores, FY2022<sup><a href="#s-brp">[2]</a></sup></div>
+    </div>
+  </div>
+
+  <!-- TAB 1: NYC -->
+  <section id="tab-nyc" class="tab-content space-y-5">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
+      <h2 class="text-lg sm:text-xl font-bold text-slate-900">Keeping NYC's federal SNAP dollars in city-owned stores</h2>
+      <p class="text-sm text-slate-600 mt-2 leading-relaxed">SNAP benefits are paid by the federal government. In FY2025, <b>$5.04 billion</b> in SNAP benefits went to New York City households<sup><a href="#s-nys">[4]</a></sup>. Today that money is spent at private stores, and most U.S. SNAP dollars end up at big supermarkets and super stores<sup><a href="#s-brp">[2]</a></sup>. Mayor Zohran Mamdani's <b>N.Y.C. Groceries</b> plan creates five city-owned stores. Every SNAP dollar spent there is federal money landing in a store the City owns.</p>
+      <div class="mt-4 grid sm:grid-cols-3 gap-3 text-sm">
+        <div class="rounded-lg bg-sky-50 border border-sky-100 p-3"><div class="font-bold text-sky-900">5 stores, one per borough</div><div class="text-slate-600 text-xs mt-1">All open by end of the Mayor's first term; first at Hunts Point (Bronx) by late 2027, La Marqueta (East Harlem) by 2029.<sup><a href="#s-mayor-jul">[7]</a><a href="#s-mayor-apr">[8]</a></sup></div></div>
+        <div class="rounded-lg bg-sky-50 border border-sky-100 p-3"><div class="font-bold text-sky-900">$70M capital budget</div><div class="text-slate-600 text-xs mt-1">For construction and fit-out; $30M of it for the ground-up La Marqueta store.<sup><a href="#s-edc">[9]</a></sup></div></div>
+        <div class="rounded-lg bg-sky-50 border border-sky-100 p-3"><div class="font-bold text-sky-900">30% off a core basket</div><div class="text-slate-600 text-xs mt-1">All produce, meat and seafood plus ~20 staple categories, for everyone. City owns the site; a private operator runs the store.<sup><a href="#s-mayor-jul">[7]</a><a href="#s-edc">[9]</a></sup></div></div>
+      </div>
+      <p class="text-xs text-slate-500 mt-3"><b>About the "700,000" figure:</b> City data shows about <b>1.6 million</b> NYC SNAP recipients in about <b>979,000</b> households (August 2026), down from about 1.8 million people in 2024–25<sup><a href="#s-hra">[5]</a><a href="#s-nys">[4]</a></sup>. The closest published number to 700,000 is the roughly <b>690,000 households</b> that get SNAP without cash assistance (HRA, September 2026)<sup><a href="#s-hra">[5]</a></sup>.</p>
+    </div>
+
+    <div class="grid lg:grid-cols-5 gap-5">
+      <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
+        <h3 class="font-bold text-slate-900">Simulator inputs</h3>
+        <div>
+          <label class="text-xs font-semibold text-slate-600">NYC annual SNAP base</label>
+          <select id="base" class="mt-1 w-full border border-slate-300 rounded-md p-2 text-sm">
+            <option value="5043320120">FY2025: $5.04B (Oct 2024–Sep 2025)</option>
+            <option value="4837495728">Latest 12 months: $4.84B (Sep 2025–Aug 2026)</option>
+          </select>
+          <div class="src mt-1">NY OTDA SNAP caseload data, New York City district<sup><a href="#s-nys">[4]</a></sup></div>
+        </div>
+        <div>
+          <div class="flex justify-between text-xs font-semibold text-slate-600"><span>City-owned stores</span><span id="storesOut" class="text-sky-700">5</span></div>
+          <input id="stores" type="range" min="1" max="50" step="1" value="5">
+          <div class="src">Plan of record: 5. Higher values are hypothetical expansion.</div>
+        </div>
+        <div>
+          <div class="flex justify-between text-xs font-semibold text-slate-600"><span>Share of NYC SNAP $ the stores capture</span><span id="shareOut" class="text-sky-700">1.0%</span></div>
+          <input id="share" type="range" min="0.1" max="25" step="0.1" value="1">
+          <div class="src">Your assumption. No published estimate exists yet.</div>
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-slate-600">Max SNAP sales one store can handle per year <span class="est">assumption</span></label>
+          <div class="flex items-center gap-2 mt-1"><span class="text-sm">$</span><input id="cap" type="number" min="0" step="0.5" value="5" class="w-24 border border-slate-300 rounded-md p-2 text-sm"><span class="text-sm">million</span></div>
+          <div class="src mt-1">A capacity check so the result can't exceed what the stores could physically serve. Set it to whatever you think is realistic. This is not a published figure.</div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-3 space-y-5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="bg-slate-900 text-white rounded-xl p-4"><div class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">SNAP $ kept in city-owned stores / yr</div><div id="outKept" class="text-2xl font-black text-emerald-400 mt-1">–</div><div id="outLimit" class="text-[11px] text-slate-400 mt-1"></div></div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4"><div class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Per store / yr</div><div id="outPer" class="text-2xl font-black text-slate-900 mt-1">–</div></div>
+          <div class="bg-white border border-slate-200 rounded-xl p-4"><div class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Over a 4-year term</div><div id="outTerm" class="text-2xl font-black text-slate-900 mt-1">–</div><div class="text-[11px] text-slate-500">if the base stays flat</div></div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <h4 class="text-sm font-bold text-slate-900 mb-2">The math, step by step</h4>
+          <ol id="math" class="text-xs sm:text-sm text-slate-700 space-y-1 font-mono leading-relaxed list-decimal pl-5"></ol>
+          <p class="text-[11px] text-slate-500 mt-3">"Kept in city-owned stores" means SNAP sales at stores the City owns. It is not City profit. Under the plan, the City covers land, rent and buildout, and a private operator runs the store under contract<sup><a href="#s-edc">[9]</a></sup>. The money is already spent in NYC today. What changes is <i>whose</i> stores receive it.</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div class="h-56"><canvas id="nycChart"></canvas></div>
+          <p class="src mt-2">Bar: NYC annual SNAP base vs the amount the simulator places in city-owned stores.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 2: FLOW -->
+  <section id="tab-flow" class="tab-content hidden space-y-5">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
+      <h2 class="text-lg sm:text-xl font-bold text-slate-900">Where U.S. SNAP dollars are spent, by store type</h2>
+      <p class="text-sm text-slate-600 mt-2">USDA publishes SNAP redemptions by <b>store format</b> (super store, supermarket, convenience...), never by company or store. The newest national breakdown by share of benefit dollars is USDA's FY2022 Benefit Redemption Patterns study (published 2025)<sup><a href="#s-brp">[2]</a></sup>.</p>
+      <div class="grid md:grid-cols-2 gap-5 mt-4 items-center">
+        <div class="h-64"><canvas id="typeChart"></canvas></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-xs text-slate-500 border-b"><th class="py-1">Store type (FY2022)</th><th class="py-1 text-right">% of SNAP $</th><th class="py-1 text-right">NYC $ <span class="est">estimate</span></th></tr></thead>
+            <tbody id="typeTable"></tbody>
+          </table>
+          <p class="src mt-2"><span class="est">estimate</span> column = NYC FY2025 benefits ($5.04B) × the national FY2022 share. NYC's real mix is not published and is likely different, with more bodega and small-grocery spending.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
+      <h3 class="font-bold text-slate-900">More detail: FY2021, all formats</h3>
+      <p class="text-sm text-slate-600 mt-1">The last USDA year-end summary in PDF form with dollar amounts per format. The total ($125.5B) includes pandemic emergency allotments and P-EBT<sup><a href="#s-ye21">[3]</a></sup>.</p>
+      <div class="overflow-x-auto mt-3">
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-xs text-slate-500 border-b"><th class="py-1">Format</th><th class="py-1 text-right">Firms</th><th class="py-1 text-right">Redeemed</th><th class="py-1 text-right">%</th></tr></thead>
+          <tbody id="ye21"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-amber-50 rounded-xl border border-amber-200 p-4 sm:p-6">
+      <h3 class="font-bold text-amber-900">Why there are no company names here</h3>
+      <p class="text-sm text-amber-900/90 mt-2">An earlier draft of this app listed per-company SNAP figures (for example "Walmart $29.46B") and credited them to "USDA FNS FY2025 SNAP Retailer Reports." <b>No such per-company report exists.</b> Those numbers have been removed. USDA does not publish how much SNAP money any company or store takes in, and the Supreme Court let it keep that secret in 2019 (see tab 3).</p>
+      <p class="text-sm text-amber-900/90 mt-2">The <b>5-tier idea</b> (mega-chains → regional chains → corporate pharmacy/dollar/convenience → small independents → single-store bodegas) sorts stores by <b>who owns them</b>. USDA only sorts by <b>format</b>, so the tiers can't be filled with public data. That gap is the problem the draft amendment (tab 5) would fix.</p>
+      <div class="overflow-x-auto mt-3">
+        <table class="w-full text-xs sm:text-sm">
+          <thead><tr class="text-left text-slate-600 border-b border-amber-200"><th class="py-1">Tier</th><th class="py-1">Who</th><th class="py-1 text-right">SNAP $</th></tr></thead>
+          <tbody>
+            <tr class="border-b border-amber-100"><td class="py-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-tier1 mr-1"></span>1</td><td>National mega-chains</td><td class="text-right font-semibold">Not published</td></tr>
+            <tr class="border-b border-amber-100"><td class="py-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-tier2 mr-1"></span>2</td><td>Regional supermarket chains</td><td class="text-right font-semibold">Not published</td></tr>
+            <tr class="border-b border-amber-100"><td class="py-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-tier3 mr-1"></span>3</td><td>Corporate pharmacy, dollar &amp; convenience chains</td><td class="text-right font-semibold">Not published</td></tr>
+            <tr class="border-b border-amber-100"><td class="py-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-tier4 mr-1"></span>4</td><td>Small multi-store independents</td><td class="text-right font-semibold">Not published</td></tr>
+            <tr><td class="py-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-tier5 mr-1"></span>5</td><td>Single-store bodegas &amp; farmers markets</td><td class="text-right font-semibold">Not published</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 3: SECRET -->
+  <section id="tab-secret" class="tab-content hidden space-y-5">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
+      <h2 class="text-lg sm:text-xl font-bold text-slate-900">Why you can't see how much SNAP money each store gets</h2>
+      <p class="text-sm text-slate-600 mt-2">Taxpayers fund SNAP benefits, but how much each store or chain takes in is secret. The grocery industry fought in court and in Congress to keep it that way.</p>
+      <ol class="mt-4 relative border-l-2 border-sky-200 ml-2 space-y-5 text-sm">
+        <li class="pl-4"><div class="font-bold text-slate-900">2011: A newspaper asks</div><div class="text-slate-600">The <i>Argus Leader</i> (Sioux Falls, SD) files a Freedom of Information Act request for every store's annual SNAP redemptions, FY2005–2010. USDA refuses under FOIA Exemption 4, and the paper sues.<sup><a href="#s-scotus">[10]</a></sup></div></li>
+        <li class="pl-4"><div class="font-bold text-slate-900">2016–2018: The paper wins, the grocery lobby steps in</div><div class="text-slate-600">A federal court orders the data released, and the Eighth Circuit upholds the order. USDA stops defending the secrecy. The <b>Food Marketing Institute (FMI)</b>, the grocery retailers' trade association, intervenes and appeals.<sup><a href="#s-scotus">[10]</a><a href="#s-nna">[11]</a></sup> In January 2017, USDA warned retailers their store-level redemption totals were about to be released under court order.<sup><a href="#s-fns-ret">[13]</a></sup></div></li>
+        <li class="pl-4"><div class="font-bold text-slate-900">2018: Industry tries a farm bill rider</div><div class="text-slate-600">The House version of the 2018 farm bill carried language to exempt grocers' SNAP data from FOIA. The National Newspaper Association objected, and the final farm bill dropped it. The National Grocers Association called protecting store-level SNAP sales data "a top priority" and promised to keep working with Congress on it.<sup><a href="#s-nna">[11]</a></sup></div></li>
+        <li class="pl-4"><div class="font-bold text-slate-900">June 24, 2019: Supreme Court sides with FMI</div><div class="text-slate-600"><i>Food Marketing Institute v. Argus Leader Media</i>, 588 U.S. 427 (2019), decided 6–3. The Court ruled that commercial information is "confidential" under Exemption 4 if the business keeps it private and the government promised privacy. A business no longer has to show disclosure would cause it substantial competitive harm. Store-level SNAP data stays secret.<sup><a href="#s-scotus">[10]</a><a href="#s-crs">[12]</a></sup></div></li>
+        <li class="pl-4"><div class="font-bold text-slate-900">Since then</div><div class="text-slate-600">USDA publishes only state totals and store-format breakdowns. Congress could override the ruling by changing the law<sup><a href="#s-crs">[12]</a></sup>, but we could not find any enacted law or currently moving bill that makes store-level SNAP redemption data public. (The 2026 "SNAP Data Transparency and Oversight Act," S.3856, is about states sharing <i>recipient</i> data with USDA, not store sales.<sup><a href="#s-s3856">[14]</a></sup>)</div></li>
+      </ol>
+    </div>
+    <div class="bg-sky-50 rounded-xl border border-sky-200 p-4 sm:p-6 text-sm text-sky-950">
+      <b>Why this matters for NYC:</b> Without store-level data, the City can't see how much of its residents' $5 billion a year in SNAP goes to national chains versus local stores, or measure how much its own stores win back. A city-owned store could publish its own SNAP sales, because no one can keep that secret from the owner.
+    </div>
+  </section>
+
+  <!-- TAB 4: TREND -->
+  <section id="tab-trend" class="tab-content hidden space-y-5">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
+      <h2 class="text-lg sm:text-xl font-bold text-slate-900">U.S. SNAP benefits by fiscal year (nominal $)</h2>
+      <div class="h-64 mt-3"><canvas id="trendChart"></canvas></div>
+      <p class="text-sm text-slate-600 mt-3">FY2016–FY2025 benefits total <b id="tenYr"></b> (sum of USDA's annual figures, not inflation-adjusted). The 2021–2023 spike reflects pandemic emergency allotments. FY2025: <b>$95.76B</b> in benefits and <b>$102.59B</b> total program cost including federal administrative costs<sup><a href="#s-fns-annual">[1]</a></sup>.</p>
+      <p class="src mt-1">Corrected from the earlier draft, which showed a "$917.63B" 10-year total and a "$96.60B" FY2025 figure. Neither matches USDA's published data.</p>
+    </div>
+    <div class="grid sm:grid-cols-3 gap-3">
+      <div class="bg-white p-4 rounded-xl border border-slate-200"><div class="text-xs font-semibold uppercase text-slate-500">New York State, FY2025</div><div class="text-2xl font-black mt-1">$7.69B</div><div class="text-xs text-slate-500">2.96M people / 1.74M households avg per month<sup><a href="#s-fns-state">[6]</a></sup></div></div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200"><div class="text-xs font-semibold uppercase text-slate-500">New York City, FY2025</div><div class="text-2xl font-black text-sky-700 mt-1">$5.04B</div><div class="text-xs text-slate-500">66% of New York State's SNAP benefits<sup><a href="#s-nys">[4]</a><a href="#s-fns-state">[6]</a></sup></div></div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200"><div class="text-xs font-semibold uppercase text-slate-500">NYC, August 2026</div><div class="text-2xl font-black mt-1">$381.2M</div><div class="text-xs text-slate-500">in one month · 1,613,318 people<sup><a href="#s-nys">[4]</a></sup></div></div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
+      <h3 class="font-bold text-slate-900">NYC SNAP recipients, monthly</h3>
+      <div class="h-56 mt-3"><canvas id="nycTrend"></canvas></div>
+      <p class="src mt-2">NY OTDA SNAP caseload data, New York City district, Jan 2024–Aug 2026<sup><a href="#s-nys">[4]</a></sup>.</p>
+    </div>
+  </section>
+
+  <!-- TAB 5: BILL -->
+  <section id="tab-bill" class="tab-content hidden space-y-5">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
+      <div class="flex flex-wrap items-center gap-2 justify-between">
+        <div>
+          <span class="inline-block text-[11px] font-extrabold uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300 rounded px-2 py-0.5">Proposed amendment (draft, not law)</span>
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 mt-2">Draft amendment to 7 U.S.C. § 2018(c)</h2>
+        </div>
+        <button onclick="copyBill()" class="px-3 py-2 bg-slate-900 text-white text-xs font-semibold rounded-md">Copy draft text</button>
+      </div>
+      <p class="text-sm text-slate-600 mt-2">This is <b>advocacy draft text</b>. It has not been introduced in Congress and is not current law. It would require USDA to publish store-level SNAP redemptions for chains, overriding the <i>Argus Leader</i> outcome for them, while protecting single-store bodegas by reporting them only as ZIP-code totals.</p>
+      <pre id="billText" class="mt-4 whitespace-pre-wrap text-[12px] sm:text-[13px] leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-3 sm:p-4 font-mono text-slate-800 max-h-[70vh] overflow-y-auto">PROPOSED AMENDMENT (DRAFT, NOT LAW)
+
+A BILL
+To amend section 9(c) of the Food and Nutrition Act of 2008 (7 U.S.C. § 2018(c)) to establish a standardized 5-tier classification framework for Supplemental Nutrition Assistance Program (SNAP) authorized retailers, mandate mandatory disclosure of retail redemption totals for corporate conglomerates, and protect the commercial privacy of single-store independent bodegas.
+
+Be it enacted by the Senate and House of Representatives of the United States of America in Congress assembled,
+
+SECTION 1. SHORT TITLE.
+This Act may be cited as the &quot;SNAP Retail Transparency and Municipal Food Access Act of 2026&quot;.
+
+SEC. 2. DISCLOSURE OF SNAP RETAIL REDEMPTION DATA BY CORPORATE CLASSIFICATION.
+Section 9(c) of the Food and Nutrition Act of 2008 (7 U.S.C. § 2018(c)) is amended—
+  (1) by striking &quot;Regulations issued&quot; and inserting &quot;(1) IN GENERAL.—Regulations issued&quot;; and
+  (2) by adding at the end the following:
+
+  &quot;(2) MANDATORY DISCLOSURE AND 5-TIER RETAIL CLASSIFICATION.—
+      &quot;(A) DEFINITIONS.—In this subsection:
+          &quot;(i) TIER 1: NATIONAL GROCERY AND MASS-MARKET MEGA-CONGLOMERATES.—The term &#x27;Tier 1 retailer&#x27; means any retail food store entity operating nationwide or across multiple geographic regions with an aggregate corporate footprint exceeding 1,000 locations or annual SNAP redemptions exceeding $100,000,000, including parent companies, subsidiaries, and banners (e.g., Walmart Inc., The Kroger Co., Costco Wholesale, Albertsons Companies, Ahold Delhaize USA, Amazon/Whole Foods, ALDI U.S., Target Corporation).
+          &quot;(ii) TIER 2: REGIONAL SUPERMARKET CHAINS.—The term &#x27;Tier 2 retailer&#x27; means any supermarket company operating 10 or more retail locations or generating $10,000,000 or more in annual SNAP redemptions, regardless of family or private ownership status (e.g., Publix Super Markets, H-E-B, Wakefern Food Corp./ShopRite, WinCo Foods, Meijer, Wegmans Food Markets, Big Y World Class Market, Demoulas Market Basket, Hy-Vee). Tier 2 retailers shall under no circumstances be classified as small or independent retailers.
+          &quot;(iii) TIER 3: NATIONAL AND REGIONAL NON-GROCERY CORPORATE CHAINS.—The term &#x27;Tier 3 retailer&#x27; means any corporate pharmacy chain, dollar store chain, or corporate convenience store chain operating 10 or more locations nationwide or regionally (e.g., CVS Health, Walgreens Boots Alliance/Duane Reade, Dollar General, Dollar Tree/Family Dollar, 7-Eleven Inc., Wawa, Circle K, Sheetz, Cumberland Farms).
+          &quot;(iv) TIER 4: SMALL MULTI-STORE INDEPENDENT GROCERS.—The term &#x27;Tier 4 retailer&#x27; means any independent grocery entity operating between 2 and 9 retail locations with annual SNAP redemptions under $10,000,000.
+          &quot;(v) TIER 5: SINGLE-STORE INDEPENDENTS, BODEGAS, AND FARMERS MARKETS.—The term &#x27;Tier 5 retailer&#x27; means any single-location neighborhood bodega, corner grocery store, independent deli, or farmers market.
+
+      &quot;(B) PUBLIC DISCLOSURE OBLIGATIONS.—
+          &quot;(i) TIERS 1, 2, AND 3.—The Secretary shall publish on an annual basis, in a machine-readable format accessible to the public, the total dollar amount of SNAP benefits redeemed at each authorized store location, summarized by parent company, brand banner, and ZIP code for all Tier 1, Tier 2, and Tier 3 retailers. Such data shall not be exempt from public disclosure under section 552(b)(4) of title 5, United States Code (commonly known as Freedom of Information Act Exemption 4), notwithstanding any judicial interpretation under Food Marketing Institute v. Argus Leader Media, 139 S. Ct. 2356 (2019).
+          &quot;(ii) TIER 4.—Redemption data for Tier 4 retailers shall be disclosed publicly summarized by ZIP code and store format.
+          &quot;(iii) TIER 5 BODEGA PRIVACY PROTECTION.—To safeguard small independent corner stores from unfair competitive practices by national conglomerates, store-specific redemption data for Tier 5 retailers shall remain confidential and shall be disclosed exclusively as an aggregated ZIP-code total combining all Tier 5 locations in that postal code.
+
+  &quot;(3) MUNICIPAL CIRCULATION SUPPORT.—States and municipalities operating municipal grocery programs or non-profit food cooperatives shall have full access to Tier 1, Tier 2, and Tier 3 store-level redemption data for urban food planning and SNAP circulation analysis.&quot;</pre>
+    </div>
+  </section>
+
+  <!-- SOURCES -->
+  <section id="tab-sources" class="tab-content hidden">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
+      <h2 class="text-lg sm:text-xl font-bold text-slate-900">Sources</h2>
+      <ol class="mt-3 space-y-2 text-sm text-slate-700 list-decimal pl-5 prose-a">
+        <li id="s-fns-annual">USDA FNS, <a href="https://www.fns.usda.gov/sites/default/files/resource-files/snap-annualsummary-11.pdf" target="_blank" rel="noopener">SNAP Participation and Cost, FY1969–FY2025</a> (data as of Nov 13, 2026).</li>
+        <li id="s-brp">USDA FNS / Mathematica, <a href="https://www.fns.usda.gov/research/snap/benefit-redemption-patterns/2022" target="_blank" rel="noopener">Benefit Redemption Patterns in SNAP, FY2022</a> (May 2025), Table ES.6.</li>
+        <li id="s-ye21">USDA FNS, <a href="https://fns-prod.azureedge.us/sites/default/files/resource-files/2021-snap-retailer-management-year-end-summary.pdf" target="_blank" rel="noopener">SNAP Retailer Management Year End Summary, FY2021</a>. Newer years: <a href="https://www.fns.usda.gov/snap/retailer/data" target="_blank" rel="noopener">FNS retailer data dashboards</a>.</li>
+        <li id="s-nys">New York State OTDA via data.ny.gov, <a href="https://data.ny.gov/d/dq6j-8u8z" target="_blank" rel="noopener">SNAP Caseloads and Expenditures by district</a> (New York City rows, monthly benefits, persons, households).</li>
+        <li id="s-hra">NYC HRA, <a href="https://www.nyc.gov/assets/hra/downloads/pdf/facts/hra_facts/2026/hra_facts_2026_09.pdf" target="_blank" rel="noopener">HRA Facts, September 2026</a>, and <a href="https://www.nyc.gov/assets/hra/downloads/pdf/snap_recipients.pdf" target="_blank" rel="noopener">SNAP Recipients 2022–2026</a>.</li>
+        <li id="s-fns-state">USDA FNS, <a href="https://www.fns.usda.gov/pd/supplemental-nutrition-assistance-program-snap" target="_blank" rel="noopener">SNAP Data Tables</a>, state-level FY2025 file (New York total).</li>
+        <li id="s-mayor-jul">NYC Mayor's Office, <a href="https://www.nyc.gov/mayors-office/news/2026/07/mayor-mamdani-unveils-30--discount---including-all-produce--all-" target="_blank" rel="noopener">Mayor Mamdani Unveils 30% Discount at New Municipal Grocery Stores</a> (July 27, 2026).</li>
+        <li id="s-mayor-apr">NYC Mayor's Office, <a href="https://www.nyc.gov/mayors-office/news/2026/04/mayor-mamdani-announces-la-marqueta-as-first-site-identified-for" target="_blank" rel="noopener">La Marqueta as First Site Identified for City's Public Grocery Stores</a> (April 14, 2026).</li>
+        <li id="s-edc">NYCEDC, <a href="https://edc.nyc/program/nyc-groceries" target="_blank" rel="noopener">N.Y.C. Groceries program page</a>.</li>
+        <li id="s-scotus">U.S. Supreme Court, <a href="https://www.supremecourt.gov/opinions/18pdf/18-481_5426.pdf" target="_blank" rel="noopener"><i>Food Marketing Institute v. Argus Leader Media</i>, No. 18-481 (June 24, 2019)</a>.</li>
+        <li id="s-nna">National Newspaper Association, <a href="https://www.nna.org/article?articleTitle=congress-stays-out-of-foia-fray--1545917264--2044--" target="_blank" rel="noopener">"Congress stays out of FOIA fray"</a> (Dec 27, 2018).</li>
+        <li id="s-crs">Congressional Research Service, <a href="https://www.congress.gov/crs_external_products/LSB/PDF/LSB10294/LSB10294.3.pdf" target="_blank" rel="noopener">When Does the Government Have to Disclose Confidential Business Information? (LSB10294)</a>.</li>
+        <li id="s-fns-ret">USDA FNS, <a href="https://www.fns.usda.gov/snap/retailer/data" target="_blank" rel="noopener">SNAP Retailer Data</a> (Jan 2017 retailer notice).</li>
+        <li id="s-s3856">Congress.gov, <a href="https://www.congress.gov/bill/119th-congress/senate-bill/3856" target="_blank" rel="noopener">S.3856, SNAP Data Transparency and Oversight Act of 2026</a>.</li>
+      </ol>
+      <p class="text-xs text-slate-500 mt-4">Figures are as published by each source. Store-type shares are national, not NYC-specific. Anything marked <span class="est">estimate</span> or <span class="est">assumption</span> is calculated or user-set, not published data.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="text-center text-[11px] text-slate-400 py-5 px-4">Built by @youngsirmuda · Data: USDA FNS, NY OTDA, NYC HRA, NYC Mayor's Office, NYCEDC · Not affiliated with the City of New York</footer>
+
+<div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 opacity-0 transition bg-slate-900 text-white px-4 py-2 rounded-lg text-sm pointer-events-none">Copied</div>
+
+<script>
+// ===== Published data (see Sources) =====
+const FY=[2016,2017,2018,2019,2020,2021,2022,2023,2024,2025];
+const US_BEN_M=[66539.27,63711.05,60916.85,55622.28,73905.39,107042.27,113243.42,106645.38,93475.89,95757.19]; // $M, FNS [1]
+const TYPES=[ // FY2022 % of benefits, FNS/Mathematica Table ES.6 [2]
+ ['Supermarkets / super stores',78.0,'#0071CE'],['Internet retailers',5.9,'#7c3aed'],['Other (combination grocery, delivery, co-ops…)',5.8,'#94a3b8'],
+ ['Convenience stores',5.3,'#FFD200'],['Large / medium grocery',3.6,'#475569'],['Specialty food',0.8,'#f97316'],['Small grocery',0.6,'#0F766E']];
+const YE21=[ // FY2021 year-end summary [3]: firms, $ redeemed, %
+ ['Super Store',19364,66419389719,52.91],['Supermarket',18842,33899251209,27.01],['Combination Grocery/Other',62526,6692641091,5.33],
+ ['Convenience Store',112529,6382363373,5.08],['Internet Retailer',89,4963714985,3.95],['Medium Grocery Store',10547,2614812666,2.08],
+ ['Large Grocery Store',3750,1983780228,1.58],['Small Grocery Store',8273,840723897,0.67],['Meat/Poultry Specialty',2424,513130557,0.41],
+ ['Seafood Specialty',1149,400962011,0.32],['All other formats (incl. farmers markets, meal providers)',null,null,null],
+ ['Total',254350,125524931862,100]];
+const NYC_M=[ // NY OTDA, NYC district: [yyyy-mm, persons, households, benefits $] [4]
+['2024-01',1737266,1030869,407832812],['2024-02',1750612,1038551,408278971],['2024-03',1769749,1050242,412630731],['2024-04',1785325,1060225,414956621],
+['2024-05',1789653,1064330,417695903],['2024-06',1789605,1066392,414356928],['2024-07',1800504,1073239,419721424],['2024-08',1805837,1077268,422000700],
+['2024-09',1804020,1077478,422058193],['2024-10',1806444,1080648,428939534],['2024-11',1796907,1076787,425179629],['2024-12',1808706,1083793,429593623],
+['2025-01',1801636,1081001,423861133],['2025-02',1794907,1076153,419297625],['2025-03',1796536,1076340,422888682],['2025-04',1798354,1077663,418661107],
+['2025-05',1796331,1076052,417301818],['2025-06',1796291,1076627,416152707],['2025-07',1787477,1072314,416100336],['2025-08',1775169,1065845,412582344],
+['2025-09',1777892,1068466,412761582],['2025-10',1757799,1059045,418406627],['2025-11',1749188,1053887,417845579],['2025-12',1735341,1046020,414883345],
+['2026-01',1716384,1035111,406983964],['2026-02',1701491,1027485,403033913],['2026-03',1703098,1028269,403084912],['2026-04',1699701,1026979,401874269],
+['2026-05',1685281,1019391,397293067],['2026-06',1678196,1016193,395120662],['2026-07',1632084,989070,385044806],['2026-08',1613318,979040,381163002]];
+const NYC_FY25=NYC_M.filter(r=>r[0]>='2024-10'&&r[0]<='2025-09').reduce((a,r)=>a+r[3],0);
+
+// ===== helpers =====
+const $=id=>document.getElementById(id);
+function money(v){const a=Math.abs(v);if(a>=1e9)return '$'+(v/1e9).toFixed(2)+'B';if(a>=1e6)return '$'+(v/1e6).toFixed(1)+'M';if(a>=1e3)return '$'+(v/1e3).toFixed(0)+'K';return '$'+v.toFixed(0)}
+const fmt=n=>n.toLocaleString('en-US');
+function toast(m){const t=$('toast');t.textContent=m;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,1600)}
+Chart.defaults.font.family='Inter';Chart.defaults.font.size=11;
+
+// ===== tabs =====
+const charts={};
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('tab-active'));b.classList.add('tab-active');
+  document.querySelectorAll('.tab-content').forEach(s=>s.classList.add('hidden'));$('tab-'+b.dataset.tab).classList.remove('hidden');
+  initTab(b.dataset.tab);window.scrollTo({top:0});
+}));
+document.querySelectorAll('sup a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.querySelector('[data-tab=sources]').click();setTimeout(()=>{const el=document.querySelector(a.getAttribute('href'));el.scrollIntoView({block:'center'});el.classList.add('bg-yellow-100');setTimeout(()=>el.classList.remove('bg-yellow-100'),1800)},50)}));
+
+function initTab(t){
+  if(t==='flow'&&!charts.type){
+    charts.type=new Chart($('typeChart'),{type:'doughnut',data:{labels:TYPES.map(x=>x[0]),datasets:[{data:TYPES.map(x=>x[1]),backgroundColor:TYPES.map(x=>x[2]),borderWidth:1}]},
+      options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10}},tooltip:{callbacks:{label:c=>c.label+': '+c.raw+'%'}}}}});
+  }
+  if(t==='trend'&&!charts.trend){
+    charts.trend=new Chart($('trendChart'),{type:'bar',data:{labels:FY.map(y=>'FY'+String(y).slice(2)),datasets:[{label:'Benefits ($B)',data:US_BEN_M.map(v=>+(v/1000).toFixed(2)),backgroundColor:'#0284c7'}]},
+      options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+c.raw+'B'}}},scales:{y:{ticks:{callback:v=>'$'+v+'B'}}}}});
+    charts.nycT=new Chart($('nycTrend'),{type:'line',data:{labels:NYC_M.map(r=>r[0]),datasets:[{label:'Recipients',data:NYC_M.map(r=>r[1]),borderColor:'#0F766E',backgroundColor:'rgba(15,118,110,.1)',fill:true,pointRadius:0,tension:.2}]},
+      options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>(v/1e6).toFixed(2)+'M'}},x:{ticks:{maxTicksLimit:6}}}}});
+  }
+}
+
+// static fills
+$('tenYr').textContent='$'+(US_BEN_M.reduce((a,b)=>a+b,0)/1000).toFixed(2)+' billion';
+$('typeTable').innerHTML=TYPES.map(x=>`<tr class="border-b border-slate-100"><td class="py-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full mr-1.5" style="background:${x[2]}"></span>${x[0]}</td><td class="text-right font-semibold">${x[1].toFixed(1)}%</td><td class="text-right text-slate-600">${money(NYC_FY25*x[1]/100)}</td></tr>`).join('')
+ +`<tr><td class="py-1.5 font-bold">Total</td><td class="text-right font-bold">${TYPES.reduce((a,x)=>a+x[1],0).toFixed(1)}%</td><td class="text-right font-bold">${money(NYC_FY25)}</td></tr>`;
+$('ye21').innerHTML=YE21.map(r=>`<tr class="border-b border-slate-100 ${r[0]==='Total'?'font-bold':''}"><td class="py-1.5">${r[0]}</td><td class="text-right">${r[1]==null?'–':fmt(r[1])}</td><td class="text-right">${r[2]==null?'–':money(r[2])}</td><td class="text-right">${r[3]==null?'–':r[3].toFixed(2)+'%'}</td></tr>`).join('');
+
+// ===== simulator =====
+function sim(){
+  const base=+$('base').value, n=+$('stores').value, sh=+$('share').value, cap=Math.max(0,+$('cap').value||0)*1e6;
+  $('storesOut').textContent=n;$('shareOut').textContent=sh.toFixed(1)+'%';
+  const want=base*sh/100, ceiling=n*cap, kept=Math.min(want,ceiling), limited=want>ceiling;
+  $('outKept').textContent=money(kept);$('outPer').textContent=money(kept/n);$('outTerm').textContent=money(kept*4);
+  $('outLimit').textContent=limited?'Limited by store capacity':'Limited by capture share';
+  $('math').innerHTML=[
+    `NYC SNAP base = ${money(base)} / yr <span class="text-slate-400">(published, OTDA)</span>`,
+    `Share captured = ${sh.toFixed(1)}% <span class="text-slate-400">(your assumption)</span>`,
+    `Demand = ${money(base)} × ${sh.toFixed(1)}% = <b>${money(want)}</b>`,
+    `Capacity = ${n} stores × ${money(cap)} = <b>${money(ceiling)}</b> <span class="text-slate-400">(assumption)</span>`,
+    `Kept in city-owned stores = min(demand, capacity) = <b class="text-emerald-700">${money(kept)}</b>`,
+    `Per store = ${money(kept)} ÷ ${n} = ${money(kept/n)}; 4 years = ${money(kept*4)}`,
+    `Left at other stores = ${money(base-kept)} (${(100*(base-kept)/base).toFixed(1)}%)`
+  ].map(s=>`<li>${s}</li>`).join('');
+  const d=[base,kept];
+  if(charts.nyc){charts.nyc.data.datasets[0].data=d;charts.nyc.update();}
+  else charts.nyc=new Chart($('nycChart'),{type:'bar',data:{labels:['All NYC SNAP $','In city-owned stores'],datasets:[{data:d,backgroundColor:['#94a3b8','#059669']}]},
+    options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>money(c.raw)}}},scales:{x:{ticks:{callback:v=>money(v)}}}}});
+}
+['base','stores','share','cap'].forEach(id=>$(id).addEventListener('input',sim));
+sim();
+
+function copyBill(){navigator.clipboard.writeText($('billText').innerText).then(()=>toast('Draft text copied'))}
+function downloadCSV(){
+  const rows=[['dataset','label','value','unit','source']];
+  FY.forEach((y,i)=>rows.push(['US SNAP benefits','FY'+y,US_BEN_M[i],'$ millions','USDA FNS annual summary']));
+  TYPES.forEach(x=>rows.push(['US share of SNAP $ by store type FY2022',x[0],x[1],'percent','USDA FNS Benefit Redemption Patterns FY2022']));
+  NYC_M.forEach(r=>{rows.push(['NYC SNAP persons',r[0],r[1],'people','NY OTDA']);rows.push(['NYC SNAP households',r[0],r[2],'households','NY OTDA']);rows.push(['NYC SNAP benefits',r[0],r[3],'$','NY OTDA'])});
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='snap-nyc-sourced-data.csv';a.click();
+}
+</script>
+</body>
+</html>
